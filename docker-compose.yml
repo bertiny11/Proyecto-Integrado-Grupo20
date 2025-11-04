@@ -5,15 +5,16 @@ services:
     image: mysql:9.5.0
     volumes:
       - ./mysql_data:/var/lib/mysql
+      - ./padelup.sql:/docker-entrypoint-initdb.d/padelup.sql:ro
     ports:
       - "5175:3306"
     networks:
       - padelup_network
     environment:
-      MYSQL_ROOT_PASSWORD: your_root_password
-      MYSQL_DATABASE: your_database_name
-      MYSQL_USER: your_username
-      MYSQL_PASSWORD: your_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
 
   phpmyadmin:
     image: phpmyadmin:5.2.3
@@ -23,7 +24,7 @@ services:
       - padelup_network
     environment:
       PMA_HOST: db
-      MYSQL_ROOT_PASSWORD: your_root_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     depends_on:
       - db
 
