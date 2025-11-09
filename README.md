@@ -1,6 +1,6 @@
 # Proyecto-Integrado-Grupo20
 ## Estructura de la base de datos
-**Usuarios**: *uid*, udni, contraseña, nombre, apellidos, monedero, nivel de juego (A, B, C, D, F)
+**Usuarios**: *uid*, udni, contraseña, nombre, apellidos, monedero, nivel de juego (A, B, C, D, F), valoracion
 
 **Sanciones**: *Usuario, fecha fin*
 
@@ -8,8 +8,10 @@
 
 **Pistas**: *pid*, empresa (F eid), tipo (muro o cristal), indoor, precio
 
-**Reserva**: *rid*, pista (F pid), hora inicio, nivel de juego, tipo (Completa/Libre), huecos libres, estado (Pendiente/Completa)
+**Reserva**: *rid*, pista (F pid), hora inicio, nivel de juego, tipo (Completa/Libre), huecos libres, estado (Pendiente/Completa/Realizada)
 
 **ParticipantesReserva**: *prid*, reserva (F rid), usuario (F uid), es creador, pagado
 
 **InvitacionesReserva**: *irid*, reserva (F rid), usuario (F uid)
+
+**Valoraciones**: *vid*, reserva (F rid), evaluador (F uid), evaluado (F uid), valoracion, comentario
