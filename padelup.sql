@@ -98,9 +98,9 @@ CREATE TABLE `Valoraciones` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-----------------------------------
--- Ejemplos de datos (opcional) --
-----------------------------------
+-- ********************************
+-- * Ejemplos de datos (opcional) *
+-- ********************************
 
 -- Usuarios
 INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
