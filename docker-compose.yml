@@ -22,19 +22,25 @@ services:
   backend:
     build:
       context: ./backend
+    ports:
+      - "5176:5000"
     networks:
       - padelup_network
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5176/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: on-failure
     environment:
       MYSQL_HOST: db
       MYSQL_PORT: 3306 # 5175?
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    #eliminar
-    restart: "no"
 
 
   phpmyadmin:
