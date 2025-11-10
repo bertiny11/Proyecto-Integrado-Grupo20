@@ -32,7 +32,8 @@ CREATE TABLE `Empresas` (
   `direccion` varchar(300) NOT NULL,
   `hora_apertura` time NOT NULL,
   `hora_cierre` time NOT NULL,
-  PRIMARY KEY (`eid`)
+  PRIMARY KEY (`eid`),
+  UNIQUE KEY `ux_empresas_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Tabla Pistas
