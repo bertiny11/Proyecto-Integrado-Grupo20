@@ -27,6 +27,7 @@ body::before {
     z-index: 1;
 }
 
+
 .register-card {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(12px);
@@ -48,6 +49,7 @@ body::before {
 
 .register-form input {
     width: 100%;
+    box-sizing: border-box;
     padding: 12px;
     margin: 8px 0;
     border-radius: 10px;
