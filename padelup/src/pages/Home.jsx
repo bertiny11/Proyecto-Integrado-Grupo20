@@ -54,7 +54,9 @@ function Home({ onNavigate }) {
       <main className="main-content">
         <div className="hero-section">
           <h1 className="hero-title">
-            <strong>Reserva, compite y conecta,</strong> a tu manera.
+            <strong>Reserva, compite y</strong>
+            <br />
+            <strong>conecta,</strong> a tu manera.
           </h1>
           <p className="hero-description">
             PadelUp es una plataforma donde puedes <span className="highlight">reservar pistas de pádel, medir tu nivel frente a otros jugadores y aprender con tutoriales diseñados</span> para mejorar tu juego. Todo lo que necesitas para disfrutar del pádel en un solo lugar.
