@@ -46,14 +46,21 @@ function Home({ onNavigate }) {
           >
             Sign Up
           </button>
-          <button className="btn-pro">Mi Cuenta</button>
+          {/* <button className="btn-pro">Mi Cuenta</button> */}
         </div>
       </nav>
 
       {/* Main Content */}
       <main className="main-content">
-        <h1>Welcome!</h1>
-        <p>Descubre las mejores experiencias de pádel</p>
+        <div className="hero-section">
+          <h1 className="hero-title">
+            <strong>Reserva, compite y conecta,</strong> a tu manera.
+          </h1>
+          <p className="hero-description">
+            PadelUp es una plataforma donde puedes <span className="highlight">reservar pistas de pádel, medir tu nivel frente a otros jugadores y aprender con tutoriales diseñados</span> para mejorar tu juego. Todo lo que necesitas para disfrutar del pádel en un solo lugar.
+          </p>
+        </div>
+        
       </main>
     </div>
   );
