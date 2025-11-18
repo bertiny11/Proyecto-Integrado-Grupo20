@@ -80,10 +80,6 @@ body::before {
     font-size: 1rem;
     cursor: pointer;
     transition: 0.3s;
-<<<<<<< HEAD
-    /* margin-top: 10px; */
-=======
->>>>>>> origin/frontend
     margin: 8px 0;
 }
 
