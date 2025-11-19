@@ -1,7 +1,65 @@
+/* Font Faces */
+@font-face {
+  font-family: 'Instrument Serif';
+  src: url('/fonts/InstrumentSerif-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-ExtraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stack Sans Headline';
+  src: url('/fonts/StackSansHeadline-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  src: url('/fonts/OpenSans-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
 /* Home Container */
 .home-container {
   min-height: 100vh;
   background-color: #ffffff;
+  transition: background-color 1.5s ease;
 }
 
 /* Navbar */
@@ -10,9 +68,10 @@
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem;
-  background-color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   position: sticky;
   top: 1rem;
   left: 1rem;
@@ -22,6 +81,8 @@
   z-index: 100;
   height: 60px;
   font-weight: 400;
+  font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
 }
 
 .navbar-left {
@@ -53,7 +114,7 @@
 .nav-item {
   cursor: pointer;
   font-size: 0.95rem;
-  color: #333;
+  color: #000000;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -62,22 +123,23 @@
 }
 
 .nav-item:hover {
-  color: #000;
+  color: #333333;
 }
 
 .dropdown {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
-.dropdown::after {
-  content: '▼';
-  font-size: 0.7rem;
-  margin-left: 0.3rem;
-  display: inline-block;
+.dropdown-arrow {
+  width: 14px;
+  height: 14px;
   transition: transform 0.3s ease;
 }
 
-.dropdown:hover::after {
+.dropdown:hover .dropdown-arrow {
   transform: rotate(180deg);
 }
 
@@ -87,9 +149,11 @@
   top: 100%;
   left: -2rem;
   margin-top: 0.5rem;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   list-style: none;
   padding: 0.5rem;
   min-width: 150px;
@@ -111,7 +175,7 @@
   padding: 0.7rem 1rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #333;
+  color: #000000;
   font-size: 0.9rem;
   text-align: left;
   border-radius: 6px;
@@ -123,10 +187,9 @@
 }
 
 .dropdown-item:hover {
-  background-color: #cfcfcf;
-  color: #000;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #000000;
   font-weight: 600;
-  padding: calc(0.7rem - 1px) calc(1rem - 1px);
 }
 
 @keyframes dropdownFadeIn {
@@ -193,22 +256,23 @@
 
 .btn-login {
   background-color: transparent;
-  color: #000;
+  color: #000000;
   border: 1px solid transparent;
 }
 
 .btn-login:hover {
-  background-color: #f5f5f5;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #000000;
 }
 
 .btn-signup {
-  background-color: transparent;
-  color: #000;
-  border: 1px solid transparent;
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #000000;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .btn-signup:hover {
-  background-color: #f5f5f5;
+  background-color: rgba(0, 0, 0, 0.1);
 }
 
 .btn-pro {
@@ -236,109 +300,397 @@
 .main-content {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  justify-content: flex-start;
   min-height: calc(100vh - 80px);
   padding: 0;
-  background-color: #fff;
-  max-width: 1920px;
-  margin: 0 auto;
   width: 100%;
 }
 
+/* Main Hero Title Section */
+.main-hero-title-section {
+  text-align: center;
+  padding: 4rem 2rem 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  color: #000;
+}
+
+.hero-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-family: 'Stack Sans Headline', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.main-hero-title {
+  font-size: 4.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+  font-family: 'Instrument Serif', 'Times New Roman', Times, serif;
+  letter-spacing: -0.02em;
+}
+
+.main-hero-subtitle {
+  font-size: 1.20rem;
+  line-height: 1.6;
+  color: #4a4a4a;
+  margin-bottom: 2.5rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  font-weight: 400;
+  font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.main-hero-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.btn-primary-dark {
+  background-color: #1a1a1a;
+  color: #fff;
+  padding: 0.8rem 2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.btn-primary-dark:hover {
+  background-color: #333;
+}
+
+.btn-secondary-light {
+  background-color: #fff;
+  color: #1a1a1a;
+  padding: 0.8rem 2rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-secondary-light:hover {
+  border-color: #1a1a1a;
+  background-color: #f9f9f9;
+}
+
+/* Hero Wrapper - Container with margins and rounded borders */
+.hero-wrapper {
+  margin: 2rem;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+/* Hero Section */
 .hero-section {
+  position: relative;
+  width: 100%;
+  height: 600px;
   display: flex;
   flex-direction: column;
-  text-align: left;
-  margin: 7rem 0 1rem 5%;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  color: #fff;
+  transition: all 0.5s ease;
+  z-index: 1;
+}
+
+/* Dynamic Background */
+.hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background-color: var(--bg-base);
+  overflow: hidden;
+  transition: background-color 1.5s ease;
+}
+
+.glass-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(60px); /* Creates the "fog" effect over the orbs */
+  z-index: 5;
+  pointer-events: none;
+}
+
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.8;
+  mix-blend-mode: screen; /* Helps colors blend nicely */
+  transition: background 1.5s ease;
+  will-change: transform, border-radius;
+}
+
+/* Orb Specifics */
+.orb-1 {
+  width: 70vw;
+  height: 70vw;
+  top: -20%;
+  left: -10%;
+  background: var(--orb-color-1);
+  animation: float-morph-1 25s infinite alternate ease-in-out;
+}
+
+.orb-2 {
+  width: 60vw;
+  height: 60vw;
+  bottom: -10%;
+  right: -10%;
+  background: var(--orb-color-2);
+  animation: float-morph-2 30s infinite alternate ease-in-out;
+}
+
+.orb-3 {
+  width: 50vw;
+  height: 50vw;
+  top: 40%;
+  left: 40%;
+  background: var(--orb-color-3);
+  animation: float-morph-3 28s infinite alternate ease-in-out;
+  opacity: 0.6;
+}
+
+.orb-4 {
+  width: 40vw;
+  height: 40vw;
+  top: 10%;
+  right: 20%;
+  background: var(--orb-color-4);
+  animation: float-morph-1 35s infinite alternate-reverse ease-in-out;
+  opacity: 0.5;
+}
+
+.orb-5 {
+  width: 45vw;
+  height: 45vw;
+  bottom: 10%;
+  left: 10%;
+  background: var(--orb-color-5);
+  animation: float-morph-2 32s infinite alternate-reverse ease-in-out;
+  opacity: 0.5;
+}
+
+/* Animations for organic movement */
+@keyframes float-morph-1 {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+  50% {
+    transform: translate(5%, 10%) rotate(10deg) scale(1.1);
+    border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+  }
+  100% {
+    transform: translate(-5%, 5%) rotate(-5deg) scale(0.95);
+    border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+  }
+}
+
+@keyframes float-morph-2 {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    border-radius: 40% 60% 60% 40% / 40% 50% 60% 50%;
+  }
+  50% {
+    transform: translate(-10%, -5%) rotate(-10deg) scale(1.05);
+    border-radius: 60% 40% 30% 70% / 70% 30% 50% 60%;
+  }
+  100% {
+    transform: translate(5%, -10%) rotate(5deg) scale(0.9);
+    border-radius: 40% 60% 60% 40% / 40% 50% 60% 50%;
+  }
+}
+
+@keyframes float-morph-3 {
+  0% {
+    transform: translate(0, 0) scale(1);
+    border-radius: 50%;
+  }
+  50% {
+    transform: translate(15%, 5%) scale(1.2);
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+  }
+  100% {
+    transform: translate(-5%, -5%) scale(0.9);
+    border-radius: 50%;
+  }
+}
+
+/* Themes Configuration */
+/* Theme 1: Blue/Cyan (Clases y Formación) - Fresh, Professional */
+.theme-blue {
+  --bg-base: #0f172a;
+  --orb-color-1: #0ea5e9; /* Sky Blue */
+  --orb-color-2: #3b82f6; /* Blue */
+  --orb-color-3: #6366f1; /* Indigo */
+  --orb-color-4: #06b6d4; /* Cyan */
+  --orb-color-5: #1e40af; /* Dark Blue */
+}
+
+/* Theme 2: Orange/Warm (Reserva tu Pista) - Energetic, Action */
+.theme-orange {
+  --bg-base: #1c1917;
+  --orb-color-1: #f97316; /* Orange */
+  --orb-color-2: #ef4444; /* Red */
+  --orb-color-3: #f59e0b; /* Amber */
+  --orb-color-4: #dc2626; /* Dark Red */
+  --orb-color-5: #fbbf24; /* Yellow */
+}
+
+/* Theme 3: Purple/Pink (Torneos y Eventos) - Exciting, Premium */
+.theme-purple {
+  --bg-base: #1e1b4b;
+  --orb-color-1: #d946ef; /* Fuchsia */
+  --orb-color-2: #8b5cf6; /* Violet */
+  --orb-color-3: #ec4899; /* Pink */
+  --orb-color-4: #a855f7; /* Purple */
+  --orb-color-5: #6366f1; /* Indigo */
+}
+
+/* Hero Content */
+.hero-content {
+  z-index: 10;
+  max-width: 130000px;
   padding: 0 2rem;
+  margin-bottom: 100px; /* Space for footer */
+  position: relative;
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
 }
 
 .hero-title {
-  font-size: 5rem;
-  font-weight: 400;
-  line-height: 1.1;
-  margin-bottom: 2rem;
-  color: #000;
-  letter-spacing: -0.02em;
-}
-
-.hero-title strong {
-  font-size: 7rem;
+  font-size: 2,4rem;
   font-weight: 700;
   line-height: 1.1;
-  margin-bottom: 2rem;
-  color: #000;
+  margin-bottom: 1.5rem;
   letter-spacing: -0.02em;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  color: #ffffff;
+
 }
 
-.hero-description {
-  font-size: 1.25rem;
+.hero-subtitle {
+  font-size: 1.5rem;
   line-height: 1.6;
-  color: #666;
-  margin: 0;
-  max-width: 800px;
-
+  opacity: 0.9;
+  max-width: 600px;
+  margin: 0 auto;
+  font-weight: 300;
 }
 
-.highlight {
-  color: #000;
+/* Hero Footer */
+.hero-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 2rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  z-index: 2;
+}
+
+.tabs-container {
+  display: flex;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+}
+
+.tab-button {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  padding: 0.8rem 1.8rem;
+  font-size: 0.95rem;
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  letter-spacing: 0.02em;
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.tab-button.active {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
   font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.partners-logos {
+  display: flex;
+  gap: 3rem;
+  opacity: 0.7;
+  align-items: center;
+}
+
+.partner-logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  letter-spacing: 0.1em;
+  color: #fff;
 }
 
 /* Responsive */
 @media (max-width: 1024px) {
-  .navbar {
-    flex-wrap: wrap;
-  }
-
-  .navbar-center {
-    order: 3;
-    width: 100%;
-    margin: 1rem 0 0 0;
-    max-width: 100%;
-  }
-
-  .nav-menu {
-    gap: 1rem;
+  .hero-title {
+    font-size: 3.5rem;
   }
 }
 
 @media (max-width: 768px) {
-  .navbar {
-    padding: 1rem;
-  }
-
-  .nav-menu {
-    display: none;
-  }
-
-  .navbar-right {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .btn-login,
-  .btn-signup,
-  .btn-pro,
-  .btn-submit {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-  }
-
   .hero-title {
-    font-size: 3rem;
-  }
-
-  .hero-description {
-    font-size: 1.1rem;
-  }
-
-  .main-content h1 {
     font-size: 2.5rem;
   }
-
-  .main-content p {
-    font-size: 1.2rem;
+  
+  .tabs-container {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .partners-logos {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
   }
 }
