@@ -79,7 +79,7 @@
 /* Home Container */
 .home-container {
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: #fdfdfd;
   transition: background-color 1.5s ease;
 }
 
@@ -347,11 +347,11 @@
 
 .main-hero-title {
   font-size: 4.5rem;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.1;
   margin-bottom: 1.5rem;
   color: #1a1a1a;
-  font-family: 'Instrument Serif', 'Times New Roman', Times, serif;
+  font-family: 'Inter', 'Times New Roman', Times, serif;
   letter-spacing: -0.02em;
 }
 
@@ -376,6 +376,7 @@
 
 .btn-primary-dark {
   background-color: #1a1a1a;
+  /*background-color: #39ea48;  */
   color: #fff;
   padding: 0.8rem 2rem;
   border-radius: 6px;
@@ -566,40 +567,50 @@
 
 /* Themes Configuration */
 .theme-blue {
-  --bg-base: #0f172a;
-  --orb-color-1: #0ea5e9; /* Sky Blue */
-  --orb-color-2: #3b82f6; /* Blue */
-  --orb-color-3: #6366f1; /* Indigo */
-  --orb-color-4: #06b6d4; /* Cyan */
-  --orb-color-5: #1e40af; /* Dark Blue */
+  --bg-base: #000000;
+  --orb-color-1: #2680ffb3; 
+  --orb-color-2: #0f1e37; 
+  --orb-color-3: #6366f1; 
+  --orb-color-4: #06b6d4; 
+  --orb-color-5: #0a1845; 
 }
 
 .theme-orange {
-  --bg-base: #1c1917;
-  --orb-color-1: #f97316; /* Orange */
-  --orb-color-2: #ef4444; /* Red */
-  --orb-color-3: #f59e0b; /* Amber */
-  --orb-color-4: #dc2626; /* Dark Red */
-  --orb-color-5: #fbbf24; /* Yellow */
+  --bg-base: #000000;
+  --orb-color-1: #ff3700; 
+  --orb-color-2: #ff0000; 
+  --orb-color-3: #ffaa00; 
+  --orb-color-4: #cc0000; 
+  --orb-color-5: #ffcc00; 
 }
 
 .theme-purple {
-  --bg-base: #1e1b4b;
-  --orb-color-1: #d946ef; /* Fuchsia */
-  --orb-color-2: #8b5cf6; /* Violet */
-  --orb-color-3: #ec4899; /* Pink */
-  --orb-color-4: #a855f7; /* Purple */
-  --orb-color-5: #6366f1; /* Indigo */
+  --bg-base: #000000e9;
+  --orb-color-1: #ff00ff;
+  --orb-color-2: #9d4edd;
+  --orb-color-3: #6200ff;
+  --orb-color-4: #00fff7;
+  --orb-color-5: #000000; 
+}
+
+.theme-green {
+  --bg-base: #15ff00;
+  --orb-color-1: #000000; 
+  --orb-color-2: #111111; 
+  --orb-color-3: #888888; 
+  --orb-color-4: #444444; 
+  --orb-color-5: #000cf2; 
 }
 
 .theme-black {
-  --bg-base: #1e1b4b;
-  --orb-color-1: #424242; /* Fuchsia */
-  --orb-color-2: #000000; /* Violet */
-  --orb-color-3: #5a5a5a; /* Pink */
-  --orb-color-4: #575852; /* Purple */
-  --orb-color-5: #000000; /* Indigo */
+  --bg-base: #000000;
+  --orb-color-1: #00619d23; 
+  --orb-color-2: #003b11; 
+  --orb-color-3: #15ff00; 
+  --orb-color-4: #00f2ff; 
+  --orb-color-5: #ffffff; 
 }
+
 
 
 /* Hero Content */
