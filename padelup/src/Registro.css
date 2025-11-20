@@ -1,4 +1,4 @@
-.login-container {
+.registro-container {
   max-width: 400px;
   margin: auto;
   padding: 2rem;
@@ -7,18 +7,14 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-.login-container h2 {
+.registro-container h2 {
   text-align: center;
   margin-bottom: 1rem;
 }
 
 label {
   display: block;
-<<<<<<< HEAD
-  /* margin-bottom: 1rem; */
-=======
   margin-bottom: 1rem;
->>>>>>> 856065c89811907e34a17b219c30bb2e290b4b4b
 }
 
 input {
@@ -32,7 +28,7 @@ input {
 button {
   width: 100%;
   padding: 0.75rem;
-  background-color: #0077cc;
+  background-color: #28a745;
   color: white;
   border: none;
   border-radius: 4px;
@@ -43,20 +39,4 @@ button {
   margin-top: 1rem;
   text-align: center;
   color: green;
-}
-
-.registro-link-top {
-  margin-bottom: 1rem;
-  font-size: 0.95rem;
-  text-align: center;
-}
-
-.registro-enlace {
-  color: #0077cc;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.registro-enlace:hover {
-  color: #005fa3;
 }

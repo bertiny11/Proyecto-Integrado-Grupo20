@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
@@ -25,4 +26,4 @@ function App() {
   )
 }
 
-export default App
+export default App;
