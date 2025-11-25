@@ -97,7 +97,7 @@ function Home({ onNavigate }) {
           Encuentra todo lo que necesitas en un solo lugar.
         </p>
         <div className="main-hero-buttons">
-          <button className="btn-primary-dark">Empezar ahora →</button>
+          <button className="btn-primary-dark" onClick={() => onNavigate('dashboard')}>Empezar ahora →</button>
           <button className="btn-secondary-light">Saber más</button>
         </div>
       </div>
