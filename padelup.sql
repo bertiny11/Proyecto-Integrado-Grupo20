@@ -52,6 +52,7 @@ CREATE TABLE `Reserva` (
   `rid` int AUTO_INCREMENT,
   `pista` int NOT NULL,               -- referencia a Pistas.pid
   `hora_inicio` datetime NOT NULL,
+  `duracion` int NOT NULL,            -- en minutos (60, 90, 120)
   `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL,
   `tipo`  enum('Completa','Libre') NOT NULL,
   `huecos_libres` int NOT NULL DEFAULT 3,   -- max 3 (validar en app)
@@ -142,11 +143,11 @@ INSERT INTO `Pistas` (`pid`,`empresa`,`tipo`,`indoor`,`precio`) VALUES
 (9, 3, 'cristal', 1, 5.50);
 
 -- Reserva
-INSERT INTO `Reserva` (`rid`,`pista`,`hora_inicio`,`nivel_de_juego`,`tipo`,`huecos_libres`,`estado`) VALUES
-(1, 1, '2025-11-01 18:00:00', 'B', 'Completa', 0, 'Completa'), 
-(2, 2, '2025-11-02 10:00:00', 'C', 'Completa', 3, 'Pendiente'),
-(3, 5, '2025-11-03 12:00:00', 'F', 'Libre', 2, 'Pendiente'),
-(4, 7, '2025-10-30 18:00:00', 'B', 'Completa', 0, 'Realizada');
+INSERT INTO `Reserva` (`rid`,`pista`,`hora_inicio`, `duracion`, `nivel_de_juego`,`tipo`,`huecos_libres`,`estado`) VALUES
+(1, 1, '2025-11-01 18:00:00', 60, 'B', 'Completa', 0, 'Completa'), 
+(2, 2, '2025-11-02 10:00:00', 90, 'C', 'Completa', 3, 'Pendiente'),
+(3, 5, '2025-11-03 12:00:00', 120, 'F', 'Libre', 2, 'Pendiente'),
+(4, 7, '2025-10-30 18:00:00', 60, 'B', 'Completa', 0, 'Realizada');
 
 -- ParticipantesReserva
 INSERT INTO `ParticipantesReserva` (`prid`,`reserva`,`usuario`,`es_creador`,`pagado`) VALUES
