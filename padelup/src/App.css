@@ -1,0 +1,95 @@
+/* Elimina márgenes y asegura altura completa */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Asegura que #root no limite el fondo */
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Page Wrapper con animaciones */
+.page-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.page-wrapper.page-fade-in {
+  opacity: 1;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.page-wrapper.page-fade-out {
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fondo completo para la app (solo en home) */
+.app-container {
+  background-image: url('/imagen-padel.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Logo y animaciones (si las usas) */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Otros estilos */
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+h1 {
+  color: rgba(0, 208, 255, 0.595);
+}
