@@ -6,7 +6,6 @@ services:
       - ./mysql_data:/var/lib/mysql
       - ./padelup.sql:/docker-entrypoint-initdb.d/padelup.sql:ro
     networks:
-      - padelup_network
       - db_network
     healthcheck:
       test: [ "CMD-SHELL", "mysql -u root -p${MYSQL_ROOT_PASSWORD} -D ${MYSQL_DATABASE} -e 'SHOW TABLES;'" ]
