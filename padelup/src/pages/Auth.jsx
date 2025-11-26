@@ -35,10 +35,12 @@ function Auth({ onNavigate, initialMode = 'login' }) {
     e.preventDefault();
     if (isLogin) {
       console.log('Login:', { email: formData.email, password: formData.password });
-      // Aquí irá la lógica de login
+      // TODO: Implementar lógica de login
+      // onNavigate('dashboard');
     } else {
       console.log('Register:', formData);
-      // Aquí irá la lógica de registro
+      // TODO: Implementar lógica de registro
+      // onNavigate('dashboard');
     }
   };
 

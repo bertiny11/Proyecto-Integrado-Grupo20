@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
+import Dashboard from './pages/Dashboard'
 import './App.css'
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
     <div className={`page-wrapper ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
       {currentPage === 'home' && <Home onNavigate={navigateTo} />}
       {currentPage === 'auth' && <Auth onNavigate={navigateTo} initialMode={authMode} />}
+      {currentPage === 'dashboard' && <Dashboard onNavigate={navigateTo} />}
     </div>
   )
 }
