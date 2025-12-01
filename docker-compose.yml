@@ -1,20 +1,57 @@
 services:
-  frontend:
-    container_name: padelup_frontend
-    build:
-      context: ./padelup
-      dockerfile: Dockerfile
+  db:
+    image: mysql:9.5.0
+    container_name: padelup_BD
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./padelup.sql:/docker-entrypoint-initdb.d/padelup.sql:ro
     ports:
-      - "5173:5173"
+      - "5175:3306"
     networks:
       - padelup_network
-    volumes:
-    - ./padelup:/app
-    - padelup_node_modules:/app/node_modules
+    healthcheck:
+      test: [ "CMD-SHELL", "mysql -u root -p${MYSQL_ROOT_PASSWORD} -D ${MYSQL_DATABASE} -e 'SHOW TABLES;'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  backend:
+    build:
+      context: ./backend
+    container_name: padelup_backend
+    ports:
+      - "5176:5000"
+    networks:
+      - padelup_network
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306 # 5175?
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  phpmyadmin:
+    image: phpmyadmin:5.2.3
+    container_name: padelup_phpmyadmin
+    ports:
+      - "5174:80"
+    networks:
+      - padelup_network
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      - db
 
 networks:
   padelup_network:
     driver: bridge
-
-volumes:
-  padelup_node_modules:
