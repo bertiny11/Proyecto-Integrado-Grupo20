@@ -1,15 +1,33 @@
 import { useState } from 'react';
+import { loginUser } from '../services/api';
 import '../styles/Modal.css';
 
-function LoginModal({ onClose }) {
+function LoginModal({ onClose, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Login:', { email, password });
-    // Aquí irá la lógica de autenticación
+    setError('');
+    setLoading(true);
+
+    try {
+      const { data } = await loginUser({ email, password });
+      // Guardar token y datos del usuario
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      console.log('Login exitoso:', data);
+      onLoginSuccess?.(data.user);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      console.error('Error login:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleForgotPassword = (e) => {
