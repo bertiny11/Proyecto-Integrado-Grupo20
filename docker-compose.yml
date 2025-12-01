@@ -38,7 +38,20 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-
+  frontend:
+    build:
+      context: ./padelup
+      dockerfile: Dockerfile
+    container_name: padelup_frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - padelup_network
+    depends_on:
+      - backend
+    restart: on-failure
+    environment:
+      VITE_API_URL: http://backend:5000
   phpmyadmin:
     image: phpmyadmin:5.2.3
     container_name: padelup_phpmyadmin

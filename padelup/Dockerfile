@@ -1,12 +1,12 @@
 # frontend/Dockerfile
-FROM node:20
+FROM node:18-alpine
 
 # Crear carpeta de trabajo
 WORKDIR /app
 
 # Instalar dependencias
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm ci
 
 # Copiar el resto del código
 COPY . .
