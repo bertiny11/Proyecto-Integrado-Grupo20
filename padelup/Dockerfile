@@ -1,5 +1,7 @@
 # frontend/Dockerfile
-FROM node:18-alpine
+FROM node:22-alpine
+
+RUN apk update && apk upgrade
 
 # Crear carpeta de trabajo
 WORKDIR /app
