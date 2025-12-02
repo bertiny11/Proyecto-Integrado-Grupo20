@@ -131,14 +131,14 @@ def end_inicio():
 def end_registro():
     datos = flask.request.get_json()
 
-    sql= "SELECT * FROM Usuarios WHERE udni = %s" # comprobar si ya existe el usuario
-    filas = enviarConsulta(sql, datos.get("udni"))
+    sql= "SELECT * FROM Usuarios WHERE email = %s" # comprobar si ya existe el usuario
+    filas = enviarConsulta(sql, datos.get("email"))
     if filas:
         return {"error": "El usuario ya existe"}, 404
     
     # insertar nuevo usuario
-    sql = "INSERT INTO Usuarios (udni, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)"
-    param = (datos.get("udni"), datos.get("nombre"), datos.get("contrasena"), 0)
+    sql = "INSERT INTO Usuarios (email, nombre, contrasena) VALUES (%s, %s, %s)"
+    param = (datos.get("email"), datos.get("nombre"), datos.get("contrasena"))
     filas = enviarConsulta(sql, param)
     return flask.jsonify(filas)
 

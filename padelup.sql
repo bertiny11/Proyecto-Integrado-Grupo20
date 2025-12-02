@@ -6,15 +6,15 @@ SET NAMES 'utf8mb4';
 -- Tabla Usuarios
 CREATE TABLE `Usuarios` (
   `uid` int AUTO_INCREMENT,
-  `udni` varchar(10) NOT NULL,
-  `contrasena` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `contrasena` varchar(100),        -- UCA no necesita contrasenas
   `nombre` varchar(100) NOT NULL,
   `apellidos` varchar(200) NOT NULL,
   `monedero` decimal(5,2) NOT NULL DEFAULT 0.00, -- max 999.99
-  `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL,
+  `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL DEFAULT 'F',
   `valoracion` decimal(3,1) NOT NULL DEFAULT 0.0, -- 0.0 a 5.0
   PRIMARY KEY (`uid`),
-  UNIQUE KEY `udni` (`udni`)
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Tabla Sanciones
