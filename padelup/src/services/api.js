@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // Obtener la URL base de la API desde variables de entorno (.env)
 // Si no está definida, usa localhost:5000 por defecto (desarrollo local)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5176';
+console.log('API_URL ->', API_URL); // depuración en consola del navegador
 
 // Crear instancia de axios con configuración base
 // baseURL: URL del servidor backend
@@ -10,6 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const api = axios.create({
     baseURL: API_URL,
     headers: { 'Content-Type': 'application/json' },
+    timeout: 10000,
 });
 
 // INTERCEPTOR: Se ejecuta ANTES de cada petición HTTP
@@ -21,7 +23,7 @@ api.interceptors.request.use(config => {
     // Si existe token, lo añade al header con formato "Bearer <token>"
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;// Retorna la configuración actualizada
-});
+}, err => Promise.reject(err));
 
 // Función para registrar un nuevo usuario
 // Parámetro: { name, email, password }
