@@ -1,7 +1,8 @@
 import os
+import datetime
 import pymysql
 import flask
-import datetime
+from flask_cors import CORS 
 
 # Cargar variables de entorno de la BD
 DB_NAME = os.getenv("MYSQL_DATABASE")
@@ -12,6 +13,7 @@ DB_PORT = int(os.getenv("MYSQL_PORT"))
 
 # Configurar Flask
 app = flask.Flask(__name__)
+CORS(app)
 app.json.ensure_ascii = False
 
 
@@ -50,8 +52,8 @@ def enviarConsulta(sql, param=None):
 
 def obtenerDatosUsuario(udni):
     '''Obtiene los datos de un usuario salvo su uid'''
-    sql = "SELECT * FROM Usuarios WHERE udni = %s" # entre ("")?
-    filas = enviarConsulta(sql, udni) # (udni,)?
+    sql = "SELECT * FROM Usuarios WHERE udni = %s"
+    filas = enviarConsulta(sql, udni)
     
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -92,7 +94,7 @@ def end_consulta():
 
     return flask.jsonify(resultado)
 #! ****************
-
+#? EJEMPLOS ********
 @app.route('/usuario/<string:uid>', methods=['GET'])
 def end_obtenerUsuario(uid):
     usuario = obtenerDatosUsuario(uid)
@@ -102,6 +104,45 @@ def end_obtenerUsuario(uid):
 def end_obtenerEmpresa(nombre):
     empresa = obtenerDatosEmpresa(nombre)
     return flask.jsonify(empresa)
+#? EJEMPLOS ********
+
+@app.route('/api/login', methods=['GET'])
+def end_login():
+    datos = flask.request.get_json() # obtener la contraseña del usuario
+    sql = "SELECT contrasena FROM Usuarios WHERE udni = %s" 
+    filas = enviarConsulta(sql, datos.get("udni"))
+
+    if not filas:                    # comprobamos que haya datos
+        return {"error": "Usuario no encontrado"}, 404
+
+    if filas[0]['contrasena'] == datos.get("contrasena"): # comprobar contraseña
+        sql = "SELECT nombre, monedero FROM Usuarios WHERE udni = %s"
+        filas = enviarConsulta(sql, datos.get("udni"))
+        return flask.jsonify(filas)
+
+    return {"error": "Contraseña incorrecta"}, 404
+
+@app.route('/inicio', methods=['GET'])
+def end_inicio():
+    datos = flask.request.get_json()    # obtener el monedero del usuario
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarConsulta(sql, datos.get("udni"))
+    return flask.jsonify(filas)
+
+@app.route('/register', methods=['POST'])
+def end_registro():
+    datos = flask.request.get_json()
+
+    sql= "SELECT * FROM Usuarios WHERE email = %s" # comprobar si ya existe el usuario
+    filas = enviarConsulta(sql, datos.get("email"))
+    if filas:
+        return {"error": "El usuario ya existe"}, 404
+    
+    # insertar nuevo usuario
+    sql = "INSERT INTO Usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)"
+    param = (datos.get("email"), datos.get("nombre"), datos.get("contrasena"), 0)
+    filas = enviarConsulta(sql, param)
+    return flask.jsonify(filas)
 
 
 ##* Ejecutar la app *###

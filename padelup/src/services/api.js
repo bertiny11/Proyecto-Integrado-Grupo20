@@ -28,7 +28,7 @@ api.interceptors.request.use(config => {
 // Función para registrar un nuevo usuario
 // Parámetro: { name, email, password }
 // Retorna: respuesta del servidor (éxito o error)
-export const registerUser = (payload) => api.post('/api/register', payload);
+export const registerUser = (payload) => api.post('/register', payload);
 
 // Función para iniciar sesión
 // Parámetro: { email, password }

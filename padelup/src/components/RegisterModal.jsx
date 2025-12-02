@@ -94,9 +94,9 @@ function RegisterModal({ onClose }) {
       try {
         // Llamar a la API de registro con los datos
         const { data } = await registerUser({
-          name: formData.fullName,
+          nombre: formData.fullName,
           email: formData.email,
-          password: formData.password,
+          contrasena: formData.password,
         });
         
         // Log para debugging

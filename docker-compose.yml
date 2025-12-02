@@ -11,7 +11,7 @@ services:
       - padelup_network
     healthcheck:
       test: [ "CMD-SHELL", "mysql -u root -p${MYSQL_ROOT_PASSWORD} -D ${MYSQL_DATABASE} -e 'SHOW TABLES;'" ]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 10
     environment:
@@ -51,7 +51,7 @@ services:
       - backend
     restart: on-failure
     environment:
-      VITE_API_URL: http://localhost:5173
+      VITE_API_URL: ${VITE_API_URL}
   phpmyadmin:
     image: phpmyadmin:5.2.3
     container_name: padelup_phpmyadmin

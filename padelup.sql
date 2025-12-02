@@ -5,16 +5,16 @@ SET NAMES 'utf8mb4';
 
 -- Tabla Usuarios
 CREATE TABLE `Usuarios` (
-  `uid` int AUTO_INCREMENT,
-  `udni` varchar(10) NOT NULL,
-  `contrasena` varchar(100) NOT NULL,
+  `uid` int AUTO_INCREMENT,  
   `nombre` varchar(100) NOT NULL,
-  `apellidos` varchar(200) NOT NULL,
+  `email` varchar(30) NOT NULL,
+  `contrasena` varchar(100) NOT NULL,
+  `apellidos` varchar(200),
   `monedero` decimal(5,2) NOT NULL DEFAULT 0.00, -- max 999.99
-  `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL,
+  `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL DEFAULT 'F',
   `valoracion` decimal(3,1) NOT NULL DEFAULT 0.0, -- 0.0 a 5.0
   PRIMARY KEY (`uid`),
-  UNIQUE KEY `udni` (`udni`)
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Tabla Sanciones
@@ -104,15 +104,15 @@ CREATE TABLE `Valoraciones` (
 -- ********************************
 
 -- Usuarios
-INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'u11111111', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
-(2, 'u22222222', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
-(3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
-(4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
-(5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
-(6, 'u66666666', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
-(7, 'u77777777', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
-(8, 'u88888888', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
+INSERT INTO `Usuarios` (`uid`,`email`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
+(1, 'admin@gmail.com', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
+(2, 'admin2@gmail.com', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
+(3, 'admin3@gmail.com', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
+(4, 'admin4@gmail.com', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
+(5, 'admin5@gmail.com', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
+(6, 'admin6@gmail.com', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
+(7, 'admin7@gmail.com', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
+(8, 'admin8@gmail.com', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
 
 -- Sanciones
 INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
