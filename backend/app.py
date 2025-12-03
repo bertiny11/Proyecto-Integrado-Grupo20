@@ -131,18 +131,46 @@ def end_inicio():
 
 @app.route('/register', methods=['POST'])
 def end_registro():
-    datos = flask.request.get_json()
+    datos = flask.request.get_json() or {}
+    email = datos.get('email')
+    nombre = datos.get('nombre') or datos.get('name')
+    contrasena = datos.get('password') or datos.get('contrasena')
 
-    sql= "SELECT * FROM Usuarios WHERE email = %s" # comprobar si ya existe el usuario
-    filas = enviarConsulta(sql, datos.get("email"))
-    if filas:
-        return {"error": "El usuario ya existe"}, 404
+    if not all([email, nombre, contrasena]):
+        return {"error": "Faltan campos: email, nombre, contraseña"}, 400
+
+    # comprobar existencia por email
+    try:
+        existente = ejecutar_select("SELECT 1 FROM usuarios WHERE email = %s", (email,))
+    except Exception:
+        return {"error": "Error en la base de datos"}, 500
+
+    if existente:
+        return {"error": "El email ya está registrado"}, 409
+
+
+    try:
+        lastid = ejecutar_commit(
+            "INSERT INTO usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)",
+            (email, nombre, '111111', 0)
+        )
+        return {"message": "Usuario creado", "id": lastid}, 201
+    except Exception:
+        app.logger.exception("Error insert usuario")
+        return {"error": "Error al crear usuario"}, 500
     
-    # insertar nuevo usuario
-    sql = "INSERT INTO Usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)"
-    param = (datos.get("email"), datos.get("nombre"), datos.get("contrasena"), 0)
-    filas = enviarConsulta(sql, param)
-    return flask.jsonify(filas)
+def ejecutar_select(sql, params=None):
+    with conectarBD() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchall()
+
+def ejecutar_commit(sql, params=None):
+    with conectarBD() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+        conn.commit()
+        return cur.lastrowid
 
 
 ##* Ejecutar la app *###
