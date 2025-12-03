@@ -49,18 +49,18 @@ function RegisterModal({ onClose }) {
     const newErrors = {};
     
     // Validar nombre completo
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'El nombre completo es requerido';
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = 'El nombre es requerido';
     }
 
-    // Validar email
-    if (!formData.email.trim()) {
-      newErrors.email = 'El correo electrónico es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      // Expresión regular para validar formato de email
-      newErrors.email = 'El correo electrónico no es válido';
+    if (!formData.apellidos.trim()) {
+      newErrors.apellidos = 'Los apellidos son requeridos';
     }
 
+    if (!formData.udni.trim()) {
+      newErrors.udni = 'El usuario es requerido';
+    }
+  
     // Validar contraseña
     if (!formData.password) {
       newErrors.password = 'La contraseña es requerida';
@@ -95,9 +95,10 @@ function RegisterModal({ onClose }) {
       try {
         // Llamar a la API de registro con los datos
         const { data } = await registerUser({
-          nombre: formData.fullName,
-          udni: formData.email,
-          contrasena: formData.password,
+          nombre: formData.nombre,
+          apellidos: formData.apellidos,
+          udni: formData.udni,
+          password: formData.password
         });
         
         // Log para debugging
@@ -140,9 +141,9 @@ function RegisterModal({ onClose }) {
             <label htmlFor="fullName">Nombre completo *</label>
             <input
               type="text"
-              id="fullName"
-              name="fullName"
-              value={formData.fullName}
+              id="nombre"
+              name="nombre"
+              value={formData.nombre}
               onChange={handleChange}
               placeholder="Juan Pérez"
               // Añadir clase 'error' si hay error en este campo
@@ -152,19 +153,34 @@ function RegisterModal({ onClose }) {
             {errors.fullName && <span className="error-message">{errors.fullName}</span>}
           </div>
 
-          {/* Campo de email */}
+          {/* Campo Apellidos */}
           <div className="form-group">
-            <label htmlFor="email">Correo electrónico *</label>
+            <label htmlFor="apellidos">Apellidos *</label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="text"
+              id="apellidos"
+              name="apellidos"
+              value={formData.apellidos}
               onChange={handleChange}
-              placeholder="ejemplo@correo.com"
-              className={errors.email ? 'error' : ''}
+              placeholder="Pérez García"
+              className={errors.apellidos ? 'error' : ''}
             />
-            {errors.email && <span className="error-message">{errors.email}</span>}
+            {errors.apellidos && <span className="error-message">{errors.apellidos}</span>}
+          </div>
+
+          {/* Campo DNI */}
+          <div className="form-group">
+            <label htmlFor="udni">DNI *</label>
+            <input
+              type="text"
+              id="udni"
+              name="udni"
+              value={formData.udni}
+              onChange={handleChange}
+              placeholder="12345678A"
+              className={errors.udni ? 'error' : ''}
+            />
+            {errors.udni && <span className="error-message">{errors.udni}</span>}
           </div>
 
           {/* Campo de contraseña */}
@@ -201,8 +217,8 @@ function RegisterModal({ onClose }) {
           {apiError && <p style={{ color: 'red', fontSize: '14px' }}>{apiError}</p>}
 
 
-          <button type="submit" className="btn-submit-form">
-            Registrarse
+          <button type="submit" className="btn-submit-form" disabled={loading}>
+            {loading ? 'Registrando...' : 'Registrarse'}
           </button>
         </form>
       </div>
