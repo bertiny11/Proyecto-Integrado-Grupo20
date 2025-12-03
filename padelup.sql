@@ -5,16 +5,16 @@ SET NAMES 'utf8mb4';
 
 -- Tabla Usuarios
 CREATE TABLE `Usuarios` (
-  `uid` int AUTO_INCREMENT,  
+  `uid` int AUTO_INCREMENT,
+  `udni` varchar(100) NOT NULL,
+  `contrasena` varchar(100),        -- UCA no necesita contrasenas
   `nombre` varchar(100) NOT NULL,
-  `email` varchar(30) NOT NULL,
-  `contrasena` varchar(100) NOT NULL,
-  `apellidos` varchar(200),
+  `apellidos` varchar(200) NOT NULL,
   `monedero` decimal(5,2) NOT NULL DEFAULT 0.00, -- max 999.99
   `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL DEFAULT 'F',
   `valoracion` decimal(3,1) NOT NULL DEFAULT 0.0, -- 0.0 a 5.0
   PRIMARY KEY (`uid`),
-  UNIQUE KEY `email` (`email`)
+  UNIQUE KEY `udni` (`udni`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Tabla Sanciones
@@ -52,6 +52,7 @@ CREATE TABLE `Reserva` (
   `rid` int AUTO_INCREMENT,
   `pista` int NOT NULL,               -- referencia a Pistas.pid
   `hora_inicio` datetime NOT NULL,
+  `duracion` int NOT NULL,            -- en minutos (60, 90, 120)
   `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL,
   `tipo`  enum('Completa','Libre') NOT NULL,
   `huecos_libres` int NOT NULL DEFAULT 3,   -- max 3 (validar en app)
@@ -104,15 +105,15 @@ CREATE TABLE `Valoraciones` (
 -- ********************************
 
 -- Usuarios
-INSERT INTO `Usuarios` (`uid`,`email`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'admin@gmail.com', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
-(2, 'admin2@gmail.com', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
-(3, 'admin3@gmail.com', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
-(4, 'admin4@gmail.com', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
-(5, 'admin5@gmail.com', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
-(6, 'admin6@gmail.com', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
-(7, 'admin7@gmail.com', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
-(8, 'admin8@gmail.com', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
+INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
+(1, 'u12345678', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
+(2, 'u22345678', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
+(3, 'u32345678', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
+(4, 'u42345678', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
+(5, 'u52345678', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
+(6, 'u62345678', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
+(7, 'u72345678', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
+(8, 'u82345678', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
 
 -- Sanciones
 INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
@@ -142,11 +143,11 @@ INSERT INTO `Pistas` (`pid`,`empresa`,`tipo`,`indoor`,`precio`) VALUES
 (9, 3, 'cristal', 1, 5.50);
 
 -- Reserva
-INSERT INTO `Reserva` (`rid`,`pista`,`hora_inicio`,`nivel_de_juego`,`tipo`,`huecos_libres`,`estado`) VALUES
-(1, 1, '2025-11-01 18:00:00', 'B', 'Completa', 0, 'Completa'), 
-(2, 2, '2025-11-02 10:00:00', 'C', 'Completa', 3, 'Pendiente'),
-(3, 5, '2025-11-03 12:00:00', 'F', 'Libre', 2, 'Pendiente'),
-(4, 7, '2025-10-30 18:00:00', 'B', 'Completa', 0, 'Realizada');
+INSERT INTO `Reserva` (`rid`,`pista`,`hora_inicio`, `duracion`, `nivel_de_juego`,`tipo`,`huecos_libres`,`estado`) VALUES
+(1, 1, '2025-11-01 18:00:00', 60, 'B', 'Completa', 0, 'Completa'), 
+(2, 2, '2025-11-02 10:00:00', 90, 'C', 'Completa', 3, 'Pendiente'),
+(3, 5, '2025-11-03 12:00:00', 120, 'F', 'Libre', 2, 'Pendiente'),
+(4, 7, '2025-10-30 18:00:00', 60, 'B', 'Completa', 0, 'Realizada');
 
 -- ParticipantesReserva
 INSERT INTO `ParticipantesReserva` (`prid`,`reserva`,`usuario`,`es_creador`,`pagado`) VALUES

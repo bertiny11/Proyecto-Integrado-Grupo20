@@ -9,8 +9,9 @@ import '../styles/Modal.css';
 function RegisterModal({ onClose }) {
   // Estado para guardar todos los datos del formulario
   const [formData, setFormData] = useState({
-    fullName: '',      // Nombre completo del usuario
-    email: '',         // Email del usuario
+    nombre: '',      // Nombre completo del usuario
+    apellidos: '',  //Apellidos completo de los usuario
+    udni: '',         // Email del usuario
     password: '',      // Contraseña
     confirmPassword: '' // Confirmación de contraseña
   });
@@ -95,7 +96,7 @@ function RegisterModal({ onClose }) {
         // Llamar a la API de registro con los datos
         const { data } = await registerUser({
           nombre: formData.fullName,
-          email: formData.email,
+          udni: formData.email,
           contrasena: formData.password,
         });
         

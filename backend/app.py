@@ -3,6 +3,9 @@ import datetime
 import pymysql
 import flask
 from flask_cors import CORS
+import jwt
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import timedelta
 
 # Cargar variables de entorno de la BD
 DB_NAME = os.getenv("MYSQL_DATABASE")
@@ -10,6 +13,8 @@ DB_USER = os.getenv("MYSQL_USER")
 DB_PASS = os.getenv("MYSQL_PASSWORD")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_in_production")  
+
 
 # Configurar Flask
 app = flask.Flask(__name__)
@@ -109,8 +114,16 @@ def end_consulta():
 #? EJEMPLOS ********
 @app.route('/usuario/<string:uid>', methods=['GET'])
 def end_obtenerUsuario(uid):
-    usuario = obtenerDatosUsuario(uid)
-    return flask.jsonify(usuario)
+    """Obtiene datos de usuario (sin contraseña)"""
+    try:
+        filas = enviarSelect("SELECT uid, udni, nombre, apellidos FROM Usuarios WHERE udni = %s", (udni,))
+    except Exception:
+        return {"error": "Error en la base de datos"}, 500
+
+    if not filas:
+        return {"error": "Usuario no encontrado"}, 404
+
+    return flask.jsonify(filas[0])
 
 @app.route('/empresa/<string:nombre>', methods=['GET'])
 def end_obtenerEmpresa(nombre):
@@ -118,21 +131,46 @@ def end_obtenerEmpresa(nombre):
     return flask.jsonify(empresa)
 #? EJEMPLOS ********
 
-@app.route('/login', methods=['GET'])
+@app.route('/login', methods=['POST'])
 def end_login():
-    datos = flask.request.get_json() # obtener la contraseña del usuario
-    sql = "SELECT contrasena FROM Usuarios WHERE email = %s" 
-    filas = enviarSelect(sql, datos.get("email"))
 
-    if not filas:                    # comprobamos que haya datos
+    datos = flask.request.get_json() or {}
+
+    udni = datos.get('udni')
+    password = datos.get('password') or datos.get('contrasena')
+
+    if not all([udni, password]):
+        return {"error": "Faltan credenciales: udni, password"}, 400
+
+    try:
+        filas = enviarSelect("SELECT uid, udni, nombre, apellidos, contrasena FROM Usuarios WHERE udni = %s", (udni,))
+    except Exception:
+        return {"error": "Error en la base de datos"}, 500
+
+
+    if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
-    if filas[0]['contrasena'] == datos.get("contrasena"): # comprobar contraseña
-        sql = "SELECT nombre, monedero FROM Usuarios WHERE email = %s"
-        filas = enviarSelect(sql, datos.get("email"))
-        return flask.jsonify(filas)
+    user = filas[0]
+    if not check_password_hash(user['contrasena'], password):
+        return {"error": "Credenciales inválidas"}, 401
 
-    return {"error": "Contraseña incorrecta"}, 404
+    payload = {
+        "user_id": user.get("uid"),
+        "udni": user.get("udni"),
+        "exp": datetime.datetime.utcnow() + timedelta(hours=24)
+    }
+    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+    return {
+        "token": token,
+        "user": {
+            "uid": user.get("uid"),
+            "udni": user.get("udni"),
+            "nombre": user.get("nombre"),
+            "apellidos": user.get("apellidos")
+        }
+    }, 200
 
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
@@ -144,32 +182,39 @@ def end_inicio():
 @app.route('/register', methods=['POST'])
 def end_registro():
     datos = flask.request.get_json() or {}
-    email = datos.get('email')
-    nombre = datos.get('nombre') or datos.get('name')
-    contrasena = datos.get('password') or datos.get('contrasena')
 
-    if not all([email, nombre, contrasena]):
-        return {"error": "Faltan campos: email, nombre, contraseña"}, 400
 
-    # comprobar existencia por email
+    # Mapear campos del frontend a BD (nombre, apellidos, udni, password)
+    udni = datos.get('udni')
+    nombre = datos.get('nombre')
+    apellidos = datos.get('apellidos')
+    password = datos.get('password') or datos.get('contrasena')
+
+    if not all([udni, nombre, apellidos, password]):
+        return {"error": "Faltan campos: udni, nombre, apellidos, password"}, 400
+
+    # Comprobar existencia por udni
     try:
-        existente = enviarSelect("SELECT 1 FROM usuarios WHERE email = %s", email)
+        existente = enviarSelect("SELECT 1 FROM Usuarios WHERE udni = %s", (udni,))
     except Exception:
+        app.logger.exception("Error SELECT Usuarios")
         return {"error": "Error en la base de datos"}, 500
 
     if existente:
-        return {"error": "El email ya está registrado"}, 409
+        return {"error": "El udni ya está registrado"}, 409
 
+    hashed = generate_password_hash(password)
 
     try:
         lastid = enviarCommit(
-            "INSERT INTO usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)",
-            (email, nombre, '111111', 0)
+            "INSERT INTO Usuarios (udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (udni, nombre, apellidos, 12345, 0.00, 'F', 0.0)
         )
         return {"message": "Usuario creado", "id": lastid}, 201
     except Exception:
-        app.logger.exception("Error insert usuario")
+        app.logger.exception("Error insert Usuarios")
         return {"error": "Error al crear usuario"}, 500
+
 
 
 ##* Ejecutar la app *###
