@@ -2,7 +2,7 @@ import os
 import datetime
 import pymysql
 import flask
-from flask_cors import CORS 
+from flask_cors import CORS
 
 # Cargar variables de entorno de la BD
 DB_NAME = os.getenv("MYSQL_DATABASE")
@@ -38,8 +38,8 @@ def normalizarHoras(filas):
             if isinstance(v, datetime.timedelta):   # si es hora
                 fila[k] = str(v)                    # la convertimos a horas legibles
 
-def enviarConsulta(sql, param=None):
-    '''Envía una consulta SQL a la base de datos y devuelve las filas.
+def enviarSelect(sql, param=None):
+    '''Envía una consulta Select a la base de datos y devuelve las filas.
     Son listas de diccionarios.'''
     try:
         with conectarBD() as conexion:
@@ -50,11 +50,23 @@ def enviarConsulta(sql, param=None):
     except Exception as e:
         return {"error": str(e)}, 500
 
-def obtenerDatosUsuario(udni):
+def enviarCommit(sql, param=None):
+    """Ejecuta una consulta que modifica la BD, hace commit y devuelve lastrowid."""
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                cursor.execute(sql, param)
+                lastid = cursor.lastrowid
+            conexion.commit()
+        return lastid
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+def obtenerDatosUsuario(email):
     '''Obtiene los datos de un usuario salvo su uid'''
-    sql = "SELECT * FROM Usuarios WHERE udni = %s"
-    filas = enviarConsulta(sql, udni)
-    
+    sql = "SELECT * FROM Usuarios WHERE email = %s"
+    filas = enviarSelect(sql, email)
+
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
     #eliminamos el uid de la respuesta por seguridad
@@ -65,7 +77,7 @@ def obtenerDatosUsuario(udni):
 def obtenerDatosEmpresa(nombre):
     '''Obtiene los datos de una empresa salvo su eid'''
     sql = "SELECT * FROM Empresas WHERE nombre = %s"
-    filas = enviarConsulta(sql, nombre)
+    filas = enviarSelect(sql, nombre)
 
     if not filas: # comprobamos que haya datos, si no 404
         return {"error": "Empresa no encontrada"}, 404
@@ -88,7 +100,7 @@ def end_consulta():
     datos = flask.request.get_json()
     sql = datos.get("sql")
     param = datos.get("param")
-    resultado = enviarConsulta(sql, param)
+    resultado = enviarSelect(sql, param)
 
     normalizarHoras(resultado)
 
@@ -106,18 +118,18 @@ def end_obtenerEmpresa(nombre):
     return flask.jsonify(empresa)
 #? EJEMPLOS ********
 
-@app.route('/api/login', methods=['GET'])
+@app.route('/login', methods=['GET'])
 def end_login():
     datos = flask.request.get_json() # obtener la contraseña del usuario
-    sql = "SELECT contrasena FROM Usuarios WHERE udni = %s" 
-    filas = enviarConsulta(sql, datos.get("udni"))
+    sql = "SELECT contrasena FROM Usuarios WHERE email = %s" 
+    filas = enviarSelect(sql, datos.get("email"))
 
     if not filas:                    # comprobamos que haya datos
         return {"error": "Usuario no encontrado"}, 404
 
     if filas[0]['contrasena'] == datos.get("contrasena"): # comprobar contraseña
-        sql = "SELECT nombre, monedero FROM Usuarios WHERE udni = %s"
-        filas = enviarConsulta(sql, datos.get("udni"))
+        sql = "SELECT nombre, monedero FROM Usuarios WHERE email = %s"
+        filas = enviarSelect(sql, datos.get("email"))
         return flask.jsonify(filas)
 
     return {"error": "Contraseña incorrecta"}, 404
@@ -125,8 +137,8 @@ def end_login():
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
     datos = flask.request.get_json()    # obtener el monedero del usuario
-    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
-    filas = enviarConsulta(sql, datos.get("udni"))
+    sql = "SELECT monedero FROM Usuarios WHERE email = %s"
+    filas = enviarSelect(sql, datos.get("email"))
     return flask.jsonify(filas)
 
 @app.route('/register', methods=['POST'])
@@ -141,7 +153,7 @@ def end_registro():
 
     # comprobar existencia por email
     try:
-        existente = ejecutar_select("SELECT 1 FROM usuarios WHERE email = %s", (email,))
+        existente = enviarSelect("SELECT 1 FROM usuarios WHERE email = %s", email)
     except Exception:
         return {"error": "Error en la base de datos"}, 500
 
@@ -150,7 +162,7 @@ def end_registro():
 
 
     try:
-        lastid = ejecutar_commit(
+        lastid = enviarCommit(
             "INSERT INTO usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)",
             (email, nombre, '111111', 0)
         )
@@ -158,19 +170,6 @@ def end_registro():
     except Exception:
         app.logger.exception("Error insert usuario")
         return {"error": "Error al crear usuario"}, 500
-    
-def ejecutar_select(sql, params=None):
-    with conectarBD() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, params)
-            return cur.fetchall()
-
-def ejecutar_commit(sql, params=None):
-    with conectarBD() as conn:
-        with conn.cursor() as cur:
-            cur.execute(sql, params)
-        conn.commit()
-        return cur.lastrowid
 
 
 ##* Ejecutar la app *###
