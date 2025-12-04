@@ -57,12 +57,15 @@ def enviarSelect(sql, param=None):
 
 def enviarCommit(sql, param=None):
     """Ejecuta una consulta que modifica la BD, hace commit y devuelve lastrowid."""
-    with conectarBD() as conexion:
-        with conexion.cursor() as cursor:
-            cursor.execute(sql, param)
-            lastid = cursor.lastrowid
-        conexion.commit()
-    return lastid
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                cursor.execute(sql, param)
+                lastid = cursor.lastrowid
+            conexion.commit()
+        return lastid
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 def obtenerDatosUsuario(udni):
     '''Obtiene los datos de un usuario salvo su uid'''
@@ -130,17 +133,16 @@ def end_obtenerEmpresa(nombre):
 
 @app.route('/login', methods=['POST'])
 def end_login():
-
     datos = flask.request.get_json() or {}
 
     udni = datos.get('udni')
-    password = datos.get('password') or datos.get('contrasena')
+    contrasena = datos.get('password') or datos.get('contrasena')
 
-    if not all([udni, password]):
-        return {"error": "Faltan credenciales: udni, password"}, 400
+    if not all([udni, contrasena]):
+        return {"error": "Faltan datos"}, 400
 
     try:
-        filas = enviarSelect("SELECT uid, udni, nombre, apellidos, contrasena FROM Usuarios WHERE udni = %s", (udni,))
+        filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena FROM Usuarios WHERE udni = %s", udni)
     except Exception:
         return {"error": "Error en la base de datos"}, 500
 
@@ -148,13 +150,13 @@ def end_login():
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
-    user = filas[0]
-    if not check_password_hash(user['contrasena'], password):
+    usuario = filas[0]
+    if not check_password_hash(usuario['contrasena'], contrasena):
         return {"error": "Credenciales inválidas"}, 401
 
     payload = {
-        "user_id": user.get("uid"),
-        "udni": user.get("udni"),
+        "user_id": usuario.get("uid"),
+        "udni": usuario.get("udni"),
         "exp": datetime.datetime.utcnow() + timedelta(hours=24)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
@@ -162,10 +164,10 @@ def end_login():
     return {
         "token": token,
         "user": {
-            "uid": user.get("uid"),
-            "udni": user.get("udni"),
-            "nombre": user.get("nombre"),
-            "apellidos": user.get("apellidos")
+            "uid": usuario.get("uid"),
+            "udni": usuario.get("udni"),
+            "nombre": usuario.get("nombre"),
+            "apellidos": usuario.get("apellidos")
         }
     }, 200
 
@@ -179,38 +181,27 @@ def end_inicio():
 @app.route('/register', methods=['POST'])
 def end_registro():
     datos = flask.request.get_json() or {}
-
-
-    # Mapear campos del frontend a BD (nombre, apellidos, udni, password)
     udni = datos.get('udni')
+    contrasena = datos.get('password') or datos.get('contrasena')
     nombre = datos.get('nombre')
     apellidos = datos.get('apellidos')
-    password = datos.get('password') or datos.get('contrasena')
 
-    if not all([udni, nombre, apellidos, password]):
-        return {"error": "Faltan campos: udni, nombre, apellidos, password"}, 400
+    # Comprobamos que esten todos los datos
+    if not all([udni, contrasena, nombre, apellidos]):
+        return {"error": "Faltan datos"}, 400
 
-    # Comprobar existencia por udni
-    try:
-        existente = enviarSelect("SELECT 1 FROM Usuarios WHERE udni = %s", (udni,))
-    except Exception:
-        app.logger.exception("Error SELECT Usuarios")
-        return {"error": "Error en la base de datos"}, 500
+    # Comprobamos que no exista el usuario
+    existente = enviarSelect("SELECT 1 FROM usuarios WHERE udni = %s", udni)
 
     if existente:
-        return {"error": "El udni ya está registrado"}, 409
+        return {"error": "Usuario ya registrado"}, 409
 
-    hashed = generate_password_hash(password)
+    hashed = generate_password_hash(contrasena)
 
-    try:
-        lastid = enviarCommit(
-            "INSERT INTO Usuarios (udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (udni, nombre, apellidos, hashed, 0.00, 'F', 0.0)
-        )
-        return {"message": "Usuario creado", "id": lastid}, 201
-    except Exception:
-        app.logger.exception("Error insert Usuarios")
-        return {"error": "Error al crear usuario"}, 500
+    enviarCommit(
+        "INSERT INTO usuarios (udni, contrasena, nombre, apellidos) VALUES (%s, %s, %s, %s)",
+        (udni, contrasena, nombre, apellidos))
+    return {"message": "Usuario creado"}, 201
 
 
 
