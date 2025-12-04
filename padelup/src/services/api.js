@@ -33,7 +33,7 @@ export const registerUser = (payload) => api.post('/register', payload);
 // Función para iniciar sesión
 // Parámetro: { email, password }
 // Retorna: token JWT y datos del usuario si es correcto
-export const loginUser = (payload) => api.post('/api/login', payload);
+export const loginUser = (payload) => api.post('/login', payload);
 
 // Función para obtener datos del perfil del usuario autenticado
 // Solo funciona si el usuario ha iniciado sesión (requiere token)

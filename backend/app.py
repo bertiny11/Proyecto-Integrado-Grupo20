@@ -124,44 +124,34 @@ def end_obtenerEmpresa(nombre):
 #? EJEMPLOS ********
 
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/login', methods=['POST'])
 def end_login():
     datos = flask.request.get_json()
-
-    
-    udni = datos.get('email')
+    udni = datos.get('udni')
     contrasena = datos.get('password') or datos.get('contrasena')
-
 
     if not all([udni, contrasena]):
         return {"error": "Faltan datos"}, 400
 
-    try:
-        filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
-    except Exception:
-        return {"error": "Error en la base de datos"}, 500
+    filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
 
-    
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
     usuario = filas[0] # no funciona el hash por ahora
         # if not check_password_hash(usuario['contrasena'], contrasena):
         #     return {"error": "Credenciales inválidas"}, 401
-    
+
     if not usuario['contrasena'] == contrasena:
         return {"error": "Credenciales inválidas"}, 401
 
-    
     payload = {
         "udni": usuario.get("udni"),
         "exp": datetime.datetime.utcnow() + timedelta(hours=24)
     }
     try:
         token = jwt.encode(payload, HASH_KEY, algorithm='HS256')
-    except Exception as e:
-        # imprime/loggea el error real para depuración
-        print("Error al generar token:", repr(e), flush=True)
+    except Exception:
         return {"error": "Error al generar el token"}, 500
 
     return {
@@ -173,7 +163,6 @@ def end_login():
             "monedero": usuario.get("monedero")
         }
     }, 200
-    
 
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
@@ -198,7 +187,7 @@ def end_registro():
     existente = enviarSelect("SELECT 1 FROM usuarios WHERE udni = %s", udni)
 
     if existente:
-        return {"error": "Usuario ya registrado"}, 409
+        return {"error": "Usuario ya registrado"}, 
 
     # hashed = generate_password_hash(contrasena)
 
