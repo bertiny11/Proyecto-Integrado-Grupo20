@@ -38,6 +38,7 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      HASH_KEY: ${HASH_KEY}
 
   phpmyadmin:
     image: phpmyadmin:5.2.3
