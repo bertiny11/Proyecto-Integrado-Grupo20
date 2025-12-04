@@ -46,7 +46,7 @@ function Registro() {
           Correo electrónico:
           <input
             type="email"
-            value={email}
+            value={holadw}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="ejemplo@correo.com"
             required

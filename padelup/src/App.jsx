@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import Register  from './pages/register'
 import Home from './pages/Home'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
@@ -24,6 +25,7 @@ function App() {
       {currentPage === 'home' && <Home onNavigate={navigateTo} />}
       {currentPage === 'auth' && <Auth onNavigate={navigateTo} initialMode={authMode} />}
       {currentPage === 'dashboard' && <Dashboard onNavigate={navigateTo} />}
+      {currentPage === 'register' && <Register onNavigate={navigateTo} />}
     </div>
   )
 }

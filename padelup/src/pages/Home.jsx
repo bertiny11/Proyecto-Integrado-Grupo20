@@ -78,7 +78,7 @@ function Home({ onNavigate }) {
           </button>
           <button 
             className="btn-signup"
-            onClick={() => onNavigate('auth', 'signup')}
+            onClick={() => onNavigate('register')}
           >
             Registrarse
           </button>

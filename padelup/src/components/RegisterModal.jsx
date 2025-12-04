@@ -1,12 +1,15 @@
 import { useState } from 'react';
 // Importar función de registro desde el servicio de API
 import { registerUser } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import '../styles/Modal.css';
 
 // Componente funcional que recibe props:
 // onClose: función para cerrar el modal
 // onRegisterSuccess: función que se ejecuta tras registro exitoso
 function RegisterModal({ onClose }) {
+  const navigate = useNavigate();
+
   // Estado para guardar todos los datos del formulario
   const [formData, setFormData] = useState({
     nombre: '',      // Nombre completo del usuario
@@ -106,7 +109,7 @@ function RegisterModal({ onClose }) {
         
         // Mostrar mensaje de éxito
         alert('¡Registro exitoso! Ahora puedes iniciar sesión');
-        
+        navigate('/dashboard');
         // Ejecutar función callback si está definida
         onRegisterSuccess?.();
 
