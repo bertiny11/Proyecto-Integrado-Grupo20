@@ -12,7 +12,7 @@ DB_USER = os.getenv("MYSQL_USER")
 DB_PASS = os.getenv("MYSQL_PASSWORD")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_in_production")  
+HASH_KEY = os.getenv("HASH_KEY")
 
 # Configurar Flask
 app = flask.Flask(__name__)
@@ -124,12 +124,14 @@ def end_obtenerEmpresa(nombre):
 #? EJEMPLOS ********
 
 
-@app.route('/login', methods=['POST'])
+@app.route('/api/login', methods=['POST'])
 def end_login():
     datos = flask.request.get_json()
 
-    udni = datos.get('udni')
+    
+    udni = datos.get('email')
     contrasena = datos.get('password') or datos.get('contrasena')
+
 
     if not all([udni, contrasena]):
         return {"error": "Faltan datos"}, 400
@@ -139,21 +141,28 @@ def end_login():
     except Exception:
         return {"error": "Error en la base de datos"}, 500
 
-
+    
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
     usuario = filas[0] # no funciona el hash por ahora
-    # if not check_password_hash(usuario['contrasena'], contrasena):
-    #     return {"error": "Credenciales inválidas"}, 401
+        # if not check_password_hash(usuario['contrasena'], contrasena):
+        #     return {"error": "Credenciales inválidas"}, 401
+    
     if not usuario['contrasena'] == contrasena:
         return {"error": "Credenciales inválidas"}, 401
 
+    
     payload = {
         "udni": usuario.get("udni"),
         "exp": datetime.datetime.utcnow() + timedelta(hours=24)
     }
-    token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+    try:
+        token = jwt.encode(payload, HASH_KEY, algorithm='HS256')
+    except Exception as e:
+        # imprime/loggea el error real para depuración
+        print("Error al generar token:", repr(e), flush=True)
+        return {"error": "Error al generar el token"}, 500
 
     return {
         "token": token,
@@ -164,6 +173,7 @@ def end_login():
             "monedero": usuario.get("monedero")
         }
     }, 200
+    
 
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
