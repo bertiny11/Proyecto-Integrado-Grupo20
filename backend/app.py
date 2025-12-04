@@ -57,20 +57,17 @@ def enviarSelect(sql, param=None):
 
 def enviarCommit(sql, param=None):
     """Ejecuta una consulta que modifica la BD, hace commit y devuelve lastrowid."""
-    try:
-        with conectarBD() as conexion:
-            with conexion.cursor() as cursor:
-                cursor.execute(sql, param)
-                lastid = cursor.lastrowid
-            conexion.commit()
-        return lastid
-    except Exception as e:
-        return {"error": str(e)}, 500
+    with conectarBD() as conexion:
+        with conexion.cursor() as cursor:
+            cursor.execute(sql, param)
+            lastid = cursor.lastrowid
+        conexion.commit()
+    return lastid
 
-def obtenerDatosUsuario(email):
+def obtenerDatosUsuario(udni):
     '''Obtiene los datos de un usuario salvo su uid'''
-    sql = "SELECT * FROM Usuarios WHERE email = %s"
-    filas = enviarSelect(sql, email)
+    sql = "SELECT * FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, udni)
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -116,7 +113,7 @@ def end_consulta():
 def end_obtenerUsuario(uid):
     """Obtiene datos de usuario (sin contraseña)"""
     try:
-        filas = enviarSelect("SELECT uid, udni, nombre, apellidos FROM Usuarios WHERE udni = %s", (udni,))
+        filas = enviarSelect("SELECT uid, udni, nombre, apellidos FROM Usuarios WHERE udni = %s", (uid,))
     except Exception:
         return {"error": "Error en la base de datos"}, 500
 
@@ -175,8 +172,8 @@ def end_login():
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
     datos = flask.request.get_json()    # obtener el monedero del usuario
-    sql = "SELECT monedero FROM Usuarios WHERE email = %s"
-    filas = enviarSelect(sql, datos.get("email"))
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, datos.get("udni"))
     return flask.jsonify(filas)
 
 @app.route('/register', methods=['POST'])
@@ -208,7 +205,7 @@ def end_registro():
     try:
         lastid = enviarCommit(
             "INSERT INTO Usuarios (udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (udni, nombre, apellidos, 12345, 0.00, 'F', 0.0)
+            (udni, nombre, apellidos, hashed, 0.00, 'F', 0.0)
         )
         return {"message": "Usuario creado", "id": lastid}, 201
     except Exception:
