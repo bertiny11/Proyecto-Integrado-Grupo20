@@ -6,7 +6,7 @@ SET NAMES 'utf8mb4';
 -- Tabla Usuarios
 CREATE TABLE `Usuarios` (
   `uid` int AUTO_INCREMENT,
-  `udni` varchar(100) NOT NULL,
+  `udni` varchar(9) NOT NULL,
   `contrasena` varchar(100),        -- UCA no necesita contrasenas
   `nombre` varchar(100) NOT NULL,
   `apellidos` varchar(200) NOT NULL,
@@ -106,14 +106,14 @@ CREATE TABLE `Valoraciones` (
 
 -- Usuarios
 INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'u12345678', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
-(2, 'u22345678', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
-(3, 'u32345678', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
-(4, 'u42345678', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
-(5, 'u52345678', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
-(6, 'u62345678', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
-(7, 'u72345678', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
-(8, 'u82345678', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
+(1, 'u11111111', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
+(2, 'u22222222', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
+(3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
+(4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
+(5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
+(6, 'u66666666', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
+(7, 'u77777777', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
+(8, 'u88888888', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
 
 -- Sanciones
 INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
