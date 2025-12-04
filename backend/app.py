@@ -4,7 +4,6 @@ import pymysql
 import flask
 from flask_cors import CORS
 import jwt
-from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 
 # Cargar variables de entorno de la BD
@@ -14,7 +13,6 @@ DB_PASS = os.getenv("MYSQL_PASSWORD")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
 SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_change_in_production")  
-
 
 # Configurar Flask
 app = flask.Flask(__name__)
@@ -67,6 +65,7 @@ def enviarCommit(sql, param=None):
     except Exception as e:
         return {"error": str(e)}, 500
 
+#? EJEMPLOS ********
 def obtenerDatosUsuario(udni):
     '''Obtiene los datos de un usuario salvo su uid'''
     sql = "SELECT * FROM Usuarios WHERE udni = %s"
@@ -92,7 +91,7 @@ def obtenerDatosEmpresa(nombre):
     for fila in filas:
         fila.pop("eid", None)
     return filas
-
+#? EJEMPLOS ********
 
 ###* Endpoints *###
 @app.route('/health', methods=['GET'])
@@ -111,19 +110,12 @@ def end_consulta():
 
     return flask.jsonify(resultado)
 #! ****************
+
 #? EJEMPLOS ********
 @app.route('/usuario/<string:uid>', methods=['GET'])
 def end_obtenerUsuario(uid):
-    """Obtiene datos de usuario (sin contraseña)"""
-    try:
-        filas = enviarSelect("SELECT uid, udni, nombre, apellidos FROM Usuarios WHERE udni = %s", (uid,))
-    except Exception:
-        return {"error": "Error en la base de datos"}, 500
-
-    if not filas:
-        return {"error": "Usuario no encontrado"}, 404
-
-    return flask.jsonify(filas[0])
+    usuario = obtenerDatosUsuario(uid)
+    return flask.jsonify(usuario)
 
 @app.route('/empresa/<string:nombre>', methods=['GET'])
 def end_obtenerEmpresa(nombre):
@@ -131,9 +123,10 @@ def end_obtenerEmpresa(nombre):
     return flask.jsonify(empresa)
 #? EJEMPLOS ********
 
+
 @app.route('/login', methods=['POST'])
 def end_login():
-    datos = flask.request.get_json() or {}
+    datos = flask.request.get_json()
 
     udni = datos.get('udni')
     contrasena = datos.get('password') or datos.get('contrasena')
@@ -142,7 +135,7 @@ def end_login():
         return {"error": "Faltan datos"}, 400
 
     try:
-        filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena FROM Usuarios WHERE udni = %s", udni)
+        filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
     except Exception:
         return {"error": "Error en la base de datos"}, 500
 
@@ -150,12 +143,13 @@ def end_login():
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
-    usuario = filas[0]
-    if not check_password_hash(usuario['contrasena'], contrasena):
+    usuario = filas[0] # no funciona el hash por ahora
+    # if not check_password_hash(usuario['contrasena'], contrasena):
+    #     return {"error": "Credenciales inválidas"}, 401
+    if not usuario['contrasena'] == contrasena:
         return {"error": "Credenciales inválidas"}, 401
 
     payload = {
-        "user_id": usuario.get("uid"),
         "udni": usuario.get("udni"),
         "exp": datetime.datetime.utcnow() + timedelta(hours=24)
     }
@@ -164,10 +158,10 @@ def end_login():
     return {
         "token": token,
         "user": {
-            "uid": usuario.get("uid"),
             "udni": usuario.get("udni"),
             "nombre": usuario.get("nombre"),
-            "apellidos": usuario.get("apellidos")
+            "apellidos": usuario.get("apellidos"),
+            "monedero": usuario.get("monedero")
         }
     }, 200
 
@@ -180,7 +174,7 @@ def end_inicio():
 
 @app.route('/register', methods=['POST'])
 def end_registro():
-    datos = flask.request.get_json() or {}
+    datos = flask.request.get_json()
     udni = datos.get('udni')
     contrasena = datos.get('password') or datos.get('contrasena')
     nombre = datos.get('nombre')
@@ -196,7 +190,7 @@ def end_registro():
     if existente:
         return {"error": "Usuario ya registrado"}, 409
 
-    hashed = generate_password_hash(contrasena)
+    # hashed = generate_password_hash(contrasena)
 
     enviarCommit(
         "INSERT INTO usuarios (udni, contrasena, nombre, apellidos) VALUES (%s, %s, %s, %s)",
