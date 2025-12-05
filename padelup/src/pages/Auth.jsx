@@ -97,7 +97,8 @@ function Auth({ onNavigate }) {
             
             alert('¡Registro exitoso!');
             // Cambiamos a login automáticamente
-            toggleAuthMode();
+            onNavigate('dashboard');
+
             
         } catch (err) {
             console.error(err);
