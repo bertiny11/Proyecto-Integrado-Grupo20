@@ -67,6 +67,8 @@ def end_ver_reservas(udni):
     normalizarHoras(filas)
     return flask.jsonify(filas)
 
+# MODIFICAR RESERVA
+
 @app.route('/usuario/<string:udni>/modificarreserva', methods=['GET'])
 def end_modificar_reserva(udni):
     datos = flask.request.get_json()
@@ -87,3 +89,35 @@ def end_modificar_reserva(udni):
     
     resultado = enviarConsulta(sql, param)
     return flask.jsonify(resultado)
+
+# RECARGAR MONEDERO
+
+@app.route('/usuario/recargar', methods=['POST'])
+def end_recargar_monedero():
+    datos = flask.request.get_json()
+    
+    sql = "UPDATE Usuarios SET monedero = monedero + %s WHERE udni = %s"
+    param = (datos.get("cantidad"), datos.get("udni"))
+    enviarConsulta(sql, param)
+    
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarConsulta(sql, datos.get("udni"))
+    
+    if not filas:
+        return {"error": "Usuario no encontrado"}, 404
+
+    return flask.jsonify(filas)
+
+
+
+
+
+
+
+
+
+
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
