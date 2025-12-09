@@ -84,28 +84,39 @@ def end_modificar_reserva(udni):
             WHERE u.udni = %s AND r.rid = %s"""
     
     param = (datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
-             datos.get("tipo"), datos.get("huecos_libres"), datos.get("estado"),
-             udni, datos.get("rid"))
+            datos.get("tipo"), datos.get("huecos_libres"), datos.get("estado"),
+            udni, datos.get("rid"))
     
     resultado = enviarConsulta(sql, param)
     return flask.jsonify(resultado)
 
-# RECARGAR MONEDERO
+# ACTUALIZAR MONEDERO
 
-@app.route('/usuario/recargar', methods=['POST'])
-def end_recargar_monedero():
+@app.route('/usuario/monedero', methods=['POST'])
+def end_actualizar_monedero():
     datos = flask.request.get_json()
-    
+    udni = datos.get("udni")
+    cantidad = float(datos.get("cantidad"))
+
+    if cantidad < 0:
+        sql_saldo = "SELECT monedero FROM Usuarios WHERE udni = %s"
+        filas = enviarConsulta(sql_saldo, udni)
+
+        if not filas:
+            return {"error": "usuario no encontrado."}, 404
+        
+        saldo_actual = float(filas[0]['monedero'])
+        
+        if saldo_actual + cantidad < 0:
+            return {"error": "saldo insuficiente."}, 400
+        
     sql = "UPDATE Usuarios SET monedero = monedero + %s WHERE udni = %s"
-    param = (datos.get("cantidad"), datos.get("udni"))
+    param = (cantidad, udni)
     enviarConsulta(sql, param)
     
     sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
-    filas = enviarConsulta(sql, datos.get("udni"))
+    filas = enviarConsulta(sql, udni)
     
-    if not filas:
-        return {"error": "Usuario no encontrado"}, 404
-
     return flask.jsonify(filas)
 
 
