@@ -10,7 +10,12 @@ import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
 
 registerLocale('es', es);
 
-// Custom Styles for React Select
+/* 
+ estilos personalizados para los componentes react-select (fecha y hora en la busqueda)
+ define la apariencia de los selectores dropdown incluyendo colores, bordes,
+ animaciones y estados de hover/focus
+ */
+
 const customSelectStyles = {
   control: (provided, state) => ({
     ...provided,
@@ -86,7 +91,11 @@ const customSelectStyles = {
   })
 };
 
-// Options for Selects
+/* 
+ configuración de opciones para los filtros de búsqueda
+ define los valores disponibles en los selectores de ordenamiento y tipo de pista
+ */
+
 const sortOptions = [
   { value: 'distance', label: 'Distancia' },
   { value: 'price', label: 'Precio' }
@@ -98,7 +107,19 @@ const courtOptions = [
   { value: 'glass', label: 'Cristal' }
 ];
 
+/* 
+ componente principal dashboard
+ gestiona todas las vistas de la aplicación (dashboard inicial, búsqueda de clubes y detalles)
+ maneja el estado de navegación, reservas, filtros y selección de horarios
+ */
+
 function Dashboard({ onNavigate }) {
+  /* 
+   estados principales del componente
+   controlan la vista activa, club seleccionado, filtros de búsqueda,
+   fecha de reserva, slots seleccionados y estados de UI como dropdowns
+   */
+  
   const [showDropdown, setShowDropdown] = useState(false);
   const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details'
   const [selectedClub, setSelectedClub] = useState(null);
@@ -116,7 +137,6 @@ function Dashboard({ onNavigate }) {
     sortBy: 'distance' // 'distance', 'price'
   });
 
-  const userLevel = "Intermedio"; // Mock user level
 
   const handleClubClick = (club) => {
     // If club doesn't have full details, find it in allClubs
@@ -134,7 +154,10 @@ function Dashboard({ onNavigate }) {
   const [dateDirection, setDateDirection] = useState('right'); // 'left' or 'right'
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Handle date change with animation
+  /* 
+   manejador de cambio de fecha con animación
+   actualiza la fecha de reserva con transición visual suave
+   */
   const handleDateChange = (newDate, direction) => {
     setDateDirection(direction);
     setDateTransitioning(true);
@@ -145,19 +168,24 @@ function Dashboard({ onNavigate }) {
   };
 
   // Image carousel auto-rotation
-  useEffect(() => {
-    if (view === 'club-details' && selectedClub && selectedClub.galleryImages) {
-      const interval = setInterval(() => {
-        setCurrentImageIndex((prevIndex) => 
-          (prevIndex + 1) % selectedClub.galleryImages.length
-        );
-      }, 3000); // Change image every 3 seconds
+  // useEffect(() => {
+  //   if (view === 'club-details' && selectedClub && selectedClub.galleryImages) {
+  //     const interval = setInterval(() => {
+  //       setCurrentImageIndex((prevIndex) => 
+  //         (prevIndex + 1) % selectedClub.galleryImages.length
+  //       );
+  //     }, 3000); // Change image every 3 seconds
 
-      return () => clearInterval(interval);
-    }
-  }, [view, selectedClub]);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [view, selectedClub]);
 
-  // Helper function to get opening hours for a specific date
+  /* 
+   función para obtener los horarios de apertura de un club en una fecha específica
+   actualmente devuelve el mismo horario para todos los días de la semana
+   retorna un objeto con openingTime y closingTime en formato HH:MM
+   si no hay datos, devuelve horarios por defecto 08:00 - 22:00
+   */
   const getOpeningHours = (club, date) => {
     if (!club || !club.openingHours) return { openingTime: '08:00', closingTime: '22:00' };
     
@@ -171,13 +199,20 @@ function Dashboard({ onNavigate }) {
     return { openingTime, closingTime };
   };
 
-  // Helper function to convert time string to minutes
+  /* 
+   función auxiliar para convertir una cadena de tiempo HH:MM a minutos totales
+   facilita los cálculos de duración y comparaciones entre horarios
+   */
   const timeToMinutes = (timeString) => {
     const [hours, minutes] = timeString.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  // Helper function to check if a slot is in the past
+  /* 
+   función auxiliar para verificar si un slot ya ha pasado
+   compara la fecha y hora del slot con el momento actual
+   previene la selección de slots en el pasado
+   */
   const isSlotInPast = (slotDate, timeSlot) => {
     const now = new Date();
     const [slotHours, slotMinutes] = timeSlot.split(':').map(Number);
@@ -186,8 +221,14 @@ function Dashboard({ onNavigate }) {
     return slotDateTime < now;
   };
 
+  /* 
+   manejador de click en un slot de reserva
+   calcula la duración disponible hacia atrás y adelante del slot seleccionado
+   verifica las políticas de duración mínima y máxima del club
+   busca slots consecutivos disponibles para formar bloques de reserva válidos
+   */
   const handleSlotClick = (court, time) => {
-    // Check if slot is in the past
+    /* verifica si el slot ya pasó */
     if (isSlotInPast(bookingDate, time)) return;
     
     const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 90 };
@@ -298,6 +339,11 @@ function Dashboard({ onNavigate }) {
     }
   };
 
+  /* 
+   manejador de selección de duración de reserva
+   recalcula la hora de inicio basada en la nueva duración seleccionada
+   distribuye el tiempo hacia adelante primero, luego hacia atrás si es necesario
+   */
   const handleDurationSelect = (duration) => {
     setSelectedSlot(prev => {
       // Recalculate start time based on new duration
@@ -326,12 +372,21 @@ function Dashboard({ onNavigate }) {
     });
   };
 
+  /* 
+   manejador para cerrar el popover de selección de slot
+   limpia el estado del slot seleccionado
+   */
   const handleClosePopover = () => {
     setSelectedSlot(null);
   };
 
+  /* 
+   manejador de hover sobre un slot de reserva
+   calcula y muestra visualmente la disponibilidad hacia adelante y atrás
+   ignora slots que ya han pasado
+   */
   const handleSlotMouseEnter = (courtId, time) => {
-    // Don't hover on past slots
+    /* no permite hover en slots pasados */
     if (isSlotInPast(bookingDate, time)) {
       setHoveredSlot(null);
       return;
@@ -402,17 +457,26 @@ function Dashboard({ onNavigate }) {
     setHoveredSlot({ courtId, time, availableMinutes, backwardsMinutes });
   };
 
+  /* 
+   manejador cuando el mouse sale de un slot
+   limpia el estado de hover para ocultar la visualización de disponibilidad
+   */
   const handleSlotMouseLeave = () => {
     setHoveredSlot(null);
   };
 
+  /* 
+   función para verificar si un slot puede ser reservado
+   comprueba disponibilidad del slot, si está en el pasado,
+   y si cumple con la duración mínima requerida por las políticas del club
+   */
   const checkBookability = (court, timeSlot) => {
     const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
     
     if (!court.slots.includes(timeSlot)) return false;
     
-    // Check if slot is in the past
+    /* verifica si el slot ya pasó */
     if (isSlotInPast(bookingDate, timeSlot)) return false;
     
     if (minDuration <= 30) return true;
@@ -477,18 +541,22 @@ function Dashboard({ onNavigate }) {
     return totalConsecutive >= minDuration;
   };
 
-  // Helper function to get available slots for club search view
+  /* 
+   función auxiliar para obtener los slots disponibles de un club en la vista de búsqueda
+   filtra todos los slots de todas las pistas del club
+   excluye slots pasados y verifica que cumplan la duración mínima de reserva
+   */
   const getAvailableSlots = (club) => {
     const now = new Date();
     const policy = club.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
     
-    // Get all unique slots from all courts
+    /* obtiene todos los slots únicos de todas las pistas */
     const allSlots = [...new Set(club.courts.flatMap(court => court.slots))];
     
-    // Filter slots that are bookable
+    /* filtra slots que pueden ser reservados */
     const bookableSlots = allSlots.filter(slot => {
-      // Check if slot is in the past (using current date/time)
+      /* verifica si el slot está en el pasado usando la fecha/hora actual */
       const [slotHours, slotMins] = slot.split(':').map(Number);
       const slotDateTime = new Date();
       slotDateTime.setHours(slotHours, slotMins, 0, 0);
@@ -576,6 +644,11 @@ function Dashboard({ onNavigate }) {
     return bookableSlots.sort();
   };
 
+  /* 
+   verifica si un slot está dentro del rango de hover
+   calcula el rango basado en el slot sobre el que está el mouse
+   prioriza asignación hacia adelante, usa slots hacia atrás solo si es necesario
+   */
   const isSlotInHoverRange = (courtId, slotTime) => {
     if (!hoveredSlot || hoveredSlot.courtId !== courtId) return false;
     
@@ -612,6 +685,11 @@ function Dashboard({ onNavigate }) {
     return currentMins >= rangeStart && currentMins < rangeEnd;
   };
 
+  /* 
+   verifica si un slot está dentro del rango seleccionado
+   calcula el rango basado en el slot seleccionado y la duración elegida
+   usa la misma lógica de priorizar asignación hacia adelante
+   */
   const isSlotInSelectedRange = (courtId, slotTime) => {
     if (!selectedSlot || selectedSlot.courtId !== courtId) return false;
     
@@ -637,7 +715,10 @@ function Dashboard({ onNavigate }) {
     return currentMins >= rangeStart && currentMins < rangeEnd;
   };
 
-  // Drag scroll functionality
+  /* 
+   efecto para habilitar funcionalidad de arrastre con el mouse en los contenedores de slots
+   permite hacer scroll horizontal arrastrando con el mouse
+   */
   useEffect(() => {
     const containers = Object.values(scrollContainerRefs.current);
     
@@ -687,36 +768,30 @@ function Dashboard({ onNavigate }) {
     });
   }, [view]);
 
-  // Extended Mock Data for Search
+  /* 
+   estructura de datos de los clubes disponibles para búsqueda y reserva
+   incluye información de precios, ubicación, políticas de reserva, horarios y pistas disponibles
+   */
   const allClubs = [
     {
       id: 1,
       name: "Club de pádel La Via",
-      distance: 0.5,
+      // distance: 0.5,
       price: 20,
-      level: "Intermedio",
       image: "https://media.pistaenjuego.ovh/images/center/3/1/2/l.sanlucar-padel-club-1_1411416213.jpg",
       location: "Av. Al-Andalus, 123, 11540 Sanlúcar de Barrameda, Cádiz",
       bookingPolicy: {
         minDuration: 60,
         maxDuration: 120
       },
-      description: "Somos el primer club de padel en el centro de Sanlúcar de Barrameda con 6 pistas de cristal panorámicas. Contamos con profesores certificados, vestuarios de lujo y una zona social con cafetería y tienda especializada.",
-      amenities: ["Acceso Minusválidos", "Alquiler Material", "Parking Gratuito", "Tienda", "Cafetería", "Vestuarios", "Taquillas", "WiFi", "Gimnasio"],
-      galleryImages: [
-        "https://polideportivolarraona.org/wp-content/uploads/2024/03/origen-padel.jpg",
-        "https://swisspadel.ch/wp-content/uploads/2024/07/DSC01134-1-2048x1366.jpg",
-        "https://skypadel.com/wp-content/uploads/2023/05/pista-pro-padel-league-2-1-1080x675.jpg",
-      ],
-      openingHours: {
-        monday: "13:00 - 21:00",
-        tuesday: "09:00 - 23:00",
-        wednesday: "09:00 - 23:00",
-        thursday: "09:00 - 23:00",
-        friday: "09:00 - 23:00",
-        saturday: "09:00 - 22:00",
-        sunday: "09:00 - 22:00"
-      },
+      // description: "Somos el primer club de padel en el centro de Sanlúcar de Barrameda con 6 pistas de cristal panorámicas. Contamos con profesores certificados, vestuarios de lujo y una zona social con cafetería y tienda especializada.",
+      // amenities: ["Acceso Minusválidos", "Alquiler Material", "Parking Gratuito", "Tienda", "Cafetería", "Vestuarios", "Taquillas", "WiFi", "Gimnasio"],
+      // galleryImages: [
+      //   "https://polideportivolarraona.org/wp-content/uploads/2024/03/origen-padel.jpg",
+      //   "https://swisspadel.ch/wp-content/uploads/2024/07/DSC01134-1-2048x1366.jpg",
+      //   "https://skypadel.com/wp-content/uploads/2023/05/pista-pro-padel-league-2-1-1080x675.jpg",
+      // ],
+      openingHours: "09:00 - 23:00",
       courts: [
         { id: 'c1', name: 'Pista Central', type: 'glass', slots: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00','22:30'] },
         { id: 'c2', name: 'Pista 2', type: 'wall', slots: ['09:00', '09:30', '17:00'] },
@@ -727,17 +802,13 @@ function Dashboard({ onNavigate }) {
     {
       id: 2,
       name: "El Moral",
-      distance: 5.1,
+      // distance: 5.1,
       price: 15,
-      level: "Avanzado",
       image: "https://www.padelelmoral.com/graf/fondo/movil/imagen_02.jpg",
       location: "Camino del Pino de la Jara, 2, 11540 Sanlúcar de Barrameda, Cádiz",
-      description: "Club exclusivo en un entorno natural privilegiado. Ideal para desconectar y disfrutar del deporte al aire libre.",
-      amenities: ["Parking", "Restaurante", "Piscina", "Gimnasio"],
-      openingHours: {
-        monday: "08:00 - 22:00",
-        weekend: "09:00 - 21:00"
-      },
+      // description: "Club exclusivo en un entorno natural privilegiado. Ideal para desconectar y disfrutar del deporte al aire libre.",
+      // amenities: ["Parking", "Restaurante", "Piscina", "Gimnasio"],
+      openingHours: "08:00 - 22:00",
       courts: [
         { id: 'c3', name: 'Pista Azul', type: 'glass', slots: ['18:00','18:30','19:00','19:30','20:00'] }
       ]
@@ -745,20 +816,13 @@ function Dashboard({ onNavigate }) {
     {
       id: 3,
       name: "Club de Padel Puerto Sherry",
-      distance: 3.2,
+      // distance: 3.2,
       price: 25,
-      level: "Avanzado",
       image: "https://www.puertosherry.com/wp-content/uploads/2021/07/Puertosherry_actividades_clubpadel_1.jpeg",
       location: "Av. de la Libertad, S/N, 11500 El Puerto de Sta María, Cádiz",
-      description: "Las mejores instalaciones indoor de la zona norte. Climatización perfecta todo el año.",
-      amenities: ["Indoor", "Climatizado", "Bar", "Tienda Pro"],
-      openingHours: {
-        monday: "13:00 - 21:00",
-        tuesday: "09:00 - 23:00",
-        wednesday: "09:00 - 23:00",
-        thursday: "09:00 - 23:00",
-        weekend: "09:00 - 22:00"
-        },
+      // description: "Las mejores instalaciones indoor de la zona norte. Climatización perfecta todo el año.",
+      // amenities: ["Indoor", "Climatizado", "Bar", "Tienda Pro"],
+      openingHours: "09:00 - 23:00",
         bookingPolicy: {
         minDuration: 30,
         maxDuration: 120
@@ -771,17 +835,13 @@ function Dashboard({ onNavigate }) {
     {
       id: 4,
       name: "Club de Pádel Nuevo Jacaranda",
-      distance: 8.5,
+      // distance: 8.5,
       price: 12,
-      level: "Intermedio",
       bookingPolicy: {
         minDuration: 90,
         maxDuration: 120
       },
-      openingHours: {
-        monday: "07:00 - 23:00",
-        weekend: "08:00 - 22:00"
-      },
+      openingHours: "07:00 - 23:00",
       image: "https://www.gestecosl.com/wp-content/uploads/2021/03/jacaranda-padel-gesteco-15.png",
       location: "Av. del Altillo, S/N, 11405 Jerez de la Frontera, Cádiz",
       courts: [
@@ -790,19 +850,23 @@ function Dashboard({ onNavigate }) {
     }
   ];
 
-  // Filter Logic
+  /* 
+   función de filtrado de clubes según criterios de búsqueda
+   aplica filtros de búsqueda por nombre, tipo de pista, fecha y rango horario
+   ordena los resultados según el criterio seleccionado (precio o distancia)
+   */
   const getFilteredClubs = () => {
     let filtered = allClubs.filter(club => {
-      // Search Query
+      /* filtro por nombre de club */
       if (filters.searchQuery && !club.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
         return false;
       }
-      // Check if club has at least one court of the selected type
+      /* verifica si el club tiene al menos una pista del tipo seleccionado */
       if (filters.courtType !== 'all') {
         const hasCourtType = club.courts.some(c => c.type === filters.courtType);
         if (!hasCourtType) return false;
       }
-      // Time range filtering would go here (checking slots against timeStart/End)
+      /* filtrado por rango horario - verifica que el club tenga slots disponibles en el rango */
       if (filters.timeStart && filters.timeEnd) {
          const formatTime = (date) => {
            if (!date) return '';
@@ -819,44 +883,46 @@ function Dashboard({ onNavigate }) {
       return true;
     });
 
-    // Sorting Logic
+    /* ordenamiento de resultados según criterio seleccionado */
     filtered.sort((a, b) => {
-      // 1. Level Priority (Exact match > +/- 1 level > others)
-      // Simplified level mapping: Principiante=1, Intermedio=2, Avanzado=3
-      const levels = { "Principiante": 1, "Intermedio": 2, "Avanzado": 3 };
-      const userLvlVal = levels[userLevel];
-      const aLvlVal = levels[a.level];
-      const bLvlVal = levels[b.level];
-
-      const aDiff = Math.abs(userLvlVal - aLvlVal);
-      const bDiff = Math.abs(userLvlVal - bLvlVal);
-
-      if (aDiff !== bDiff) return aDiff - bDiff;
-
-      // 2. Secondary Sort
+      /* ordena por precio si está seleccionado */
       if (filters.sortBy === 'price') return a.price - b.price;
-      return a.distance - b.distance;
+      // return a.distance - b.distance;
+      return 0; // Sin ordenación por distancia
     });
 
     return filtered;
   };
 
-  // Get recommended clubs (3 closest clubs)
+  /* 
+   lista de clubes recomendados para mostrar en la vista principal del dashboard
+   toma los primeros 3 clubes de la lista completa
+   incluye rating mock de 4.8 estrellas para cada club
+   */
   const recommendedClubs = [...allClubs]
-    .sort((a, b) => a.distance - b.distance)
+    // .sort((a, b) => a.distance - b.distance)
     .slice(0, 3)
     .map(club => ({
       id: club.id,
       name: club.name,
-      distance: `${club.distance} km`,
+      // distance: `${club.distance} km`,
       rating: 4.8, // Mock rating, podría venir de los datos del club
       image: club.image,
       location: club.location
     }));
 
+  /* 
+   ========================================
+   renderizado principal del componente dashboard
+   muestra tres vistas diferentes según el estado 'view':
+   - 'dashboard': pantalla principal con clubes recomendados
+   - 'club-details': detalles del club con grid de reservas por pistas
+   - 'club-search': búsqueda de clubes con filtros
+   ========================================
+   */
+  
   return (
     <div className="dashboard-container">
-      {/* Navbar */}
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo" onClick={() => {
@@ -898,7 +964,6 @@ function Dashboard({ onNavigate }) {
         <div key={view} className="view-transition">
         {view === 'dashboard' ? (
           <>
-            {/* Recommended Clubs Section */}
             <section className="dashboard-section fade-in">
               <div className="section-header">
                 <div>
@@ -933,7 +998,6 @@ function Dashboard({ onNavigate }) {
             </section>
           </>
         ) : view === 'club-details' && selectedClub ? (
-          /* Club Details View */
           <section className="club-details-section fade-in">
             {/* Header with Image */}
             <div className="club-details-header" style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${selectedClub.image})`}}>
@@ -1116,49 +1180,36 @@ function Dashboard({ onNavigate }) {
                     </div>
                   </div>
                   
-                  <div className="info-card">
+                  {/* <div className="info-card">
                     <h3>Servicios</h3>
                     <div className="amenities-tags">
                       {selectedClub.amenities?.map(amenity => (
                         <span key={amenity} className="amenity-tag">{amenity}</span>
                       )) || <span className="no-info">Información no disponible</span>}
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="info-card">
                     <h3>Horario</h3>
                     <div className="opening-hours-list">
-                      {selectedClub.openingHours ? Object.entries(selectedClub.openingHours).map(([day, hours]) => {
-                        const daysInSpanish = {
-                          'monday': 'Lunes',
-                          'tuesday': 'Martes',
-                          'wednesday': 'Miércoles',
-                          'thursday': 'Jueves',
-                          'friday': 'Viernes',
-                          'saturday': 'Sábado',
-                          'sunday': 'Domingo',
-                          'weekend': 'Fin de semana'
-                        };
-                        const dayName = daysInSpanish[day] || day.charAt(0).toUpperCase() + day.slice(1);
-                        return (
-                          <div key={day} className="hour-row">
-                            <span className="day-name">{dayName}</span>
-                            <span className="hours-val">{hours}</span>
-                          </div>
-                        );
-                      }) : <p>Horario no disponible</p>}
+                      {selectedClub.openingHours ? (
+                        <div className="hour-row">
+                          <span className="day-name">Todos los días</span>
+                          <span className="hours-val">{selectedClub.openingHours}</span>
+                        </div>
+                      ) : <p>Horario no disponible</p>}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Description Section */}
-              <div className="club-description-section">
+              {/* <div className="club-description-section">
                 <h3>Sobre {selectedClub.name}</h3>
                 <p>{selectedClub.description || "No hay descripción disponible para este club."}</p>
                 
                 {/* Image Gallery Carousel */}
-                {selectedClub.galleryImages && selectedClub.galleryImages.length > 0 && (
+                {/* {selectedClub.galleryImages && selectedClub.galleryImages.length > 0 && (
                   <div className="club-gallery-carousel">
                     <div className="carousel-image-container">
                       {selectedClub.galleryImages.map((img, index) => (
@@ -1199,11 +1250,10 @@ function Dashboard({ onNavigate }) {
                     </div>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
           </section>
         ) : (
-          /* Club Search View */
           <section className="club-search-section fade-in">
             <div className="search-header">
               <button className="btn-back" onClick={() => setView('dashboard')}>← Volver</button>
@@ -1319,16 +1369,13 @@ function Dashboard({ onNavigate }) {
                 <div key={club.id} className="search-club-card" onClick={() => handleClubClick(club)}>
                   <div className="search-club-image">
                     <img src={club.image} alt={club.name} />
-                    <div className="search-club-badges">
-                      <span className="badge-level">{club.level}</span>
-                    </div>
                   </div>
                   <div className="search-club-info">
                     <div className="search-club-header">
                       <h3>{club.name}</h3>
                       <span className="price-tag">desde {club.price}€</span>
                     </div>
-                    <p className="location-text">{club.location} • {club.distance} km</p>
+                    <p className="location-text">{club.location}</p>
                     
                     <div className="available-slots-section">
                       <h4>Horarios Disponibles:</h4>
@@ -1351,8 +1398,6 @@ function Dashboard({ onNavigate }) {
         )}
         </div>
       </main>
-
-      {/* Footer Section */}
 
       <footer className="footer-section">
         <div className="footer-container">
