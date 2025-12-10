@@ -1,10 +1,11 @@
 import os
 import datetime
+from datetime import timedelta
 import pymysql
 import flask
 from flask_cors import CORS
 import jwt
-from datetime import timedelta
+import bcrypt
 
 # Cargar variables de entorno de la BD
 DB_NAME = os.getenv("MYSQL_DATABASE")
@@ -12,7 +13,7 @@ DB_USER = os.getenv("MYSQL_USER")
 DB_PASS = os.getenv("MYSQL_PASSWORD")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
-HASH_KEY = os.getenv("HASH_KEY")
+HASH_KEY = os.getenv("HASH_KEY").encode()
 
 # Configurar Flask
 app = flask.Flask(__name__)
@@ -64,6 +65,18 @@ def enviarCommit(sql, param=None):
         return lastid
     except Exception as e:
         return {"error": str(e)}, 500
+
+def hashContrasena(password):
+    """Devuelve el hash de la contrasena"""
+    pwd = (HASH_KEY + password.encode()) # Combinamos la clave y la contrasena
+    hashed = bcrypt.hashpw(pwd, bcrypt.gensalt())
+    return hashed.decode()
+
+def verificarContrasena(password, hashed):
+    """Comprueba si la contraseña coincide."""
+    pwd = (HASH_KEY + password.encode())
+    return bcrypt.checkpw(pwd, hashed.encode())
+
 
 #? EJEMPLOS ********
 def obtenerDatosUsuario(udni):
@@ -133,7 +146,7 @@ def end_login():
     if not all([udni, contrasena]):
         return {"error": "Faltan datos"}, 400
 
-    filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
+    filas = enviarSelect("SELECT udni, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -142,7 +155,7 @@ def end_login():
         # if not check_password_hash(usuario['contrasena'], contrasena):
         #     return {"error": "Credenciales inválidas"}, 401
 
-    if not usuario['contrasena'] == contrasena:
+    if not verificarContrasena(contrasena, usuario['contrasena']):
         return {"error": "Credenciales inválidas"}, 401
 
     payload = {
@@ -193,7 +206,7 @@ def end_registro():
 
     enviarCommit(
         "INSERT INTO usuarios (udni, contrasena, nombre, apellidos) VALUES (%s, %s, %s, %s)",
-        (udni, contrasena, nombre, apellidos))
+        (udni, hashContrasena(contrasena), nombre, apellidos))
     return {"message": "Usuario creado"}, 201
 
 @app.route('/reservas/<string:udni>', methods=['GET'])
