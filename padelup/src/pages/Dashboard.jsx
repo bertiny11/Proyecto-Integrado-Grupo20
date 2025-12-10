@@ -104,6 +104,7 @@ function Dashboard({ onNavigate }) {
   const [selectedClub, setSelectedClub] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [bookingDate, setBookingDate] = useState(new Date());
+  const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario
   const scrollContainerRefs = useRef({});
   
   // Search States
@@ -116,7 +117,24 @@ function Dashboard({ onNavigate }) {
     sortBy: 'distance' // 'distance', 'price'
   });
 
-  const userLevel = "Intermedio"; // Mock user level
+  // 1. CARGAR DATOS DEL USUARIO
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+        try {
+            setCurrentUser(JSON.parse(userStr));
+        } catch (e) {
+            console.error("Error leyendo usuario", e);
+        }
+    }
+  }, []);
+
+  // Función para cerrar sesión
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    onNavigate('auth'); // O 'home'
+  };
 
   const handleClubClick = (club) => {
     // If club doesn't have full details, find it in allClubs
@@ -887,13 +905,20 @@ function Dashboard({ onNavigate }) {
         </div>
 
         <div className="navbar-right">
-           <button className="user-account-btn">
-              <div className="user-avatar">P</div>
+           {/* 2. BOTÓN MI CUENTA: Ahora cambia la vista a 'profile' */}
+          <button 
+                className={`user-account-btn ${view === 'profile' ? 'active' : ''}`}
+                onClick={() => setView('profile')}
+          >
+              <div className="user-avatar">
+                  {currentUser?.nombre ? currentUser.nombre.charAt(0).toUpperCase() : 'U'}
+              </div>
               <span>Mi Cuenta</span>
-           </button>
+          </button>
         </div>
       </nav>
 
+      {/* VISTA 1: DASHBOARD */}
       <main className="dashboard-content">
         <div key={view} className="view-transition">
         {view === 'dashboard' ? (
@@ -932,6 +957,99 @@ function Dashboard({ onNavigate }) {
               </div>
             </section>
           </>
+          /* VISTA 2: PERFIL DE USUARIO (NUEVA) */
+        ) : view === 'profile' ? (
+            <section className="profile-section fade-in" style={{padding: '2rem', maxWidth: '800px', margin: '0 auto'}}>
+                <h2 className="section-title" style={{marginBottom: '2rem'}}>Mi Perfil</h2>
+                
+                {currentUser ? (
+                    <div className="profile-card" style={{
+                        backgroundColor: 'white', 
+                        borderRadius: '16px', 
+                        padding: '2rem', 
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                    }}>
+                        <div style={{display: 'flex', alignItems: 'center', marginBottom: '2rem', gap: '1.5rem'}}>
+                            <div style={{
+                                width: '80px', height: '80px', 
+                                backgroundColor: '#111827', color: 'white', 
+                                borderRadius: '50%', display: 'flex', 
+                                alignItems: 'center', justifyContent: 'center', 
+                                fontSize: '2rem', fontWeight: 'bold'
+                            }}>
+                                {currentUser.nombre ? currentUser.nombre.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                            <div>
+                                <h3 style={{fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.25rem'}}>
+                                    {currentUser.nombre} {currentUser.apellidos}
+                                </h3>
+                                <p style={{color: '#6b7280'}}>Usuario: {currentUser.udni}</p>
+                            </div>
+                        </div>
+
+                        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem'}}>
+                            
+                            {/* Tarjeta Monedero */}
+                            <div style={{
+                                padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb',
+                                backgroundColor: '#f9fafb'
+                            }}>
+                                <span style={{display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem'}}>Monedero</span>
+                                <div style={{fontSize: '1.5rem', fontWeight: '600', color: '#059669'}}>
+                                    {currentUser.monedero ? parseFloat(currentUser.monedero).toFixed(2) : '0.00'} €
+                                </div>
+                            </div>
+
+                            {/* Tarjeta Valoración */}
+                            <div style={{
+                                padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb',
+                                backgroundColor: '#f9fafb'
+                            }}>
+                                <span style={{display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem'}}>Valoración</span>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                    <span style={{fontSize: '1.5rem', fontWeight: '600'}}>
+                                        {currentUser.valoracion || '0.0'}
+                                    </span>
+                                    <span style={{color: '#FBBF24', fontSize: '1.5rem'}}>★</span>
+                                </div>
+                            </div>
+
+                             {/* Tarjeta Nivel (Opcional si lo añadiste al backend) */}
+                            <div style={{
+                                padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb',
+                                backgroundColor: '#f9fafb'
+                            }}>
+                                <span style={{display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem'}}>Nivel de Juego</span>
+                                <div style={{fontSize: '1.25rem', fontWeight: '600'}}>
+                                    {currentUser.nivel_de_juego || 'Sin clasificar'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{marginTop: '2rem', borderTop: '1px solid #e5e7eb', paddingTop: '2rem'}}>
+                            <button 
+                                onClick={handleLogout}
+                                style={{
+                                    padding: '0.75rem 1.5rem', 
+                                    backgroundColor: '#ef4444', 
+                                    color: 'white', 
+                                    border: 'none', 
+                                    borderRadius: '8px', 
+                                    fontWeight: '500', 
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cerrar Sesión
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{textAlign: 'center', padding: '3rem'}}>
+                        <p>No se ha encontrado información del usuario. Por favor inicia sesión de nuevo.</p>
+                        <button onClick={handleLogout} className="btn-primary">Ir al Login</button>
+                    </div>
+                )}
+            </section>
         ) : view === 'club-details' && selectedClub ? (
           /* Club Details View */
           <section className="club-details-section fade-in">

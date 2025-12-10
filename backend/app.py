@@ -160,7 +160,9 @@ def end_login():
             "udni": usuario.get("udni"),
             "nombre": usuario.get("nombre"),
             "apellidos": usuario.get("apellidos"),
-            "monedero": usuario.get("monedero")
+            "valoración": usuario.get("valoracion"),
+            "nivel_de_juego": usuario.get("nivel_de_juego"), #añadido
+            "monedero": usuario.get("monedero") #añadido
         }
     }, 200
 
