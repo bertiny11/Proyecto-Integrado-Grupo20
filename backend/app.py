@@ -3,6 +3,8 @@ import datetime
 import pymysql
 import flask
 from flask_cors import CORS
+import jwt
+from datetime import timedelta
 
 # Cargar variables de entorno de la BD
 DB_NAME = os.getenv("MYSQL_DATABASE")
@@ -10,6 +12,7 @@ DB_USER = os.getenv("MYSQL_USER")
 DB_PASS = os.getenv("MYSQL_PASSWORD")
 DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
+HASH_KEY = os.getenv("HASH_KEY")
 
 # Configurar Flask
 app = flask.Flask(__name__)
@@ -62,10 +65,11 @@ def enviarCommit(sql, param=None):
     except Exception as e:
         return {"error": str(e)}, 500
 
-def obtenerDatosUsuario(email):
+#? EJEMPLOS ********
+def obtenerDatosUsuario(udni):
     '''Obtiene los datos de un usuario salvo su uid'''
-    sql = "SELECT * FROM Usuarios WHERE email = %s"
-    filas = enviarSelect(sql, email)
+    sql = "SELECT * FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, udni)
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -87,7 +91,7 @@ def obtenerDatosEmpresa(nombre):
     for fila in filas:
         fila.pop("eid", None)
     return filas
-
+#? EJEMPLOS ********
 
 ###* Endpoints *###
 @app.route('/health', methods=['GET'])
@@ -106,6 +110,7 @@ def end_consulta():
 
     return flask.jsonify(resultado)
 #! ****************
+
 #? EJEMPLOS ********
 @app.route('/usuario/<string:uid>', methods=['GET'])
 def end_obtenerUsuario(uid):
@@ -118,58 +123,159 @@ def end_obtenerEmpresa(nombre):
     return flask.jsonify(empresa)
 #? EJEMPLOS ********
 
-@app.route('/login', methods=['GET'])
-def end_login():
-    datos = flask.request.get_json() # obtener la contraseña del usuario
-    sql = "SELECT contrasena FROM Usuarios WHERE email = %s" 
-    filas = enviarSelect(sql, datos.get("email"))
 
-    if not filas:                    # comprobamos que haya datos
+@app.route('/login', methods=['POST'])
+def end_login():
+    datos = flask.request.get_json()
+    udni = datos.get('udni')
+    contrasena = datos.get('password') or datos.get('contrasena')
+
+    if not all([udni, contrasena]):
+        return {"error": "Faltan datos"}, 400
+
+    filas = enviarSelect("SELECT uid, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
+
+    if not filas:
         return {"error": "Usuario no encontrado"}, 404
 
-    if filas[0]['contrasena'] == datos.get("contrasena"): # comprobar contraseña
-        sql = "SELECT nombre, monedero FROM Usuarios WHERE email = %s"
-        filas = enviarSelect(sql, datos.get("email"))
-        return flask.jsonify(filas)
+    usuario = filas[0] # no funciona el hash por ahora
+        # if not check_password_hash(usuario['contrasena'], contrasena):
+        #     return {"error": "Credenciales inválidas"}, 401
 
-    return {"error": "Contraseña incorrecta"}, 404
+    if not usuario['contrasena'] == contrasena:
+        return {"error": "Credenciales inválidas"}, 401
+
+    payload = {
+        "udni": usuario.get("udni"),
+        "exp": datetime.datetime.utcnow() + timedelta(hours=24)
+    }
+    try:
+        token = jwt.encode(payload, HASH_KEY, algorithm='HS256')
+    except Exception:
+        return {"error": "Error al generar el token"}, 500
+
+    return {
+        "token": token,
+        "user": {
+            "udni": usuario.get("udni"),
+            "nombre": usuario.get("nombre"),
+            "apellidos": usuario.get("apellidos"),
+            "monedero": usuario.get("monedero")
+        }
+    }, 200
 
 @app.route('/inicio', methods=['GET'])
 def end_inicio():
     datos = flask.request.get_json()    # obtener el monedero del usuario
-    sql = "SELECT monedero FROM Usuarios WHERE email = %s"
-    filas = enviarSelect(sql, datos.get("email"))
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, datos.get("udni"))
     return flask.jsonify(filas)
 
 @app.route('/register', methods=['POST'])
 def end_registro():
-    datos = flask.request.get_json() or {}
-    email = datos.get('email')
-    nombre = datos.get('nombre') or datos.get('name')
+    datos = flask.request.get_json()
+    udni = datos.get('udni')
     contrasena = datos.get('password') or datos.get('contrasena')
+    nombre = datos.get('nombre')
+    apellidos = datos.get('apellidos')
 
-    if not all([email, nombre, contrasena]):
-        return {"error": "Faltan campos: email, nombre, contraseña"}, 400
+    # Comprobamos que esten todos los datos
+    if not all([udni, contrasena, nombre, apellidos]):
+        return {"error": "Faltan datos"}, 400
 
-    # comprobar existencia por email
-    try:
-        existente = enviarSelect("SELECT 1 FROM usuarios WHERE email = %s", email)
-    except Exception:
-        return {"error": "Error en la base de datos"}, 500
+    # Comprobamos que no exista el usuario
+    existente = enviarSelect("SELECT 1 FROM usuarios WHERE udni = %s", udni)
 
     if existente:
-        return {"error": "El email ya está registrado"}, 409
+        return {"error": "Usuario ya registrado"}, 409
 
+    # hashed = generate_password_hash(contrasena)
 
-    try:
-        lastid = enviarCommit(
-            "INSERT INTO usuarios (email, nombre, contrasena, monedero) VALUES (%s, %s, %s, %s)",
-            (email, nombre, '111111', 0)
-        )
-        return {"message": "Usuario creado", "id": lastid}, 201
-    except Exception:
-        app.logger.exception("Error insert usuario")
-        return {"error": "Error al crear usuario"}, 500
+    enviarCommit(
+        "INSERT INTO usuarios (udni, contrasena, nombre, apellidos) VALUES (%s, %s, %s, %s)",
+        (udni, contrasena, nombre, apellidos))
+    return {"message": "Usuario creado"}, 201
+
+@app.route('/reservas/<string:udni>', methods=['GET'])
+def end_ver_reservas(udni):
+    sql = """SELECT 
+            u.udni,
+            u.nombre,
+            u.apellidos,
+            pr.es_creador,
+            pr.pagado,
+            r.hora_inicio,
+            r.duracion,
+            r.nivel_de_juego,
+            r.tipo,
+            r.huecos_libres,
+            r.estado,
+            e.nombre AS empresa
+        FROM Usuarios u
+        JOIN ParticipantesReserva pr ON u.uid = pr.usuario
+        JOIN Reserva r ON pr.reserva = r.rid
+        JOIN Pistas p ON r.pista = p.pid
+        JOIN Empresas e ON p.empresa = e.eid
+        WHERE u.udni = %s
+        ORDER BY r.hora_inicio DESC;"""
+    
+    filas = enviarSelect(sql, [udni])
+
+    if not filas:
+        return {"Error": "No existen reservas para este usuario"}, 404
+    
+    normalizarHoras(filas)
+    return flask.jsonify(filas)
+
+@app.route('/modificarreserva', methods=['POST'])
+def end_modificar_reserva():
+    datos = flask.request.get_json()
+    sql = """UPDATE Reserva r
+            JOIN ParticipantesReserva pr ON r.rid = pr.reserva
+            JOIN Usuarios u ON pr.usuario = u.uid
+            SET r.hora_inicio = %s,
+                r.duracion = %s,
+                r.nivel_de_juego = %s,
+                r.tipo = %s,
+                r.huecos_libres = %s,
+                r.estado = %s
+            WHERE u.udni = %s AND r.rid = %s AND pr.es_creador = 1;"""
+
+    param = (datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
+            datos.get("tipo"), datos.get("huecos_libres"), datos.get("estado"),
+            datos.get("udni"), datos.get("rid"))
+    
+    resultado = enviarCommit(sql, param)
+    return flask.jsonify(resultado)
+
+@app.route('/actualizarmonedero', methods=['POST'])
+def end_actualizar_monedero():
+    datos = flask.request.get_json()
+    udni = datos.get("udni")
+    cantidad = float(datos.get("cantidad"))
+
+    sql_saldo = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql_saldo, udni)
+
+    if not filas:
+        return {"error": "usuario no encontrado."}, 404
+    
+    saldo_actual = float(filas[0]['monedero'])
+    
+    if saldo_actual + cantidad < 0:
+        return {"error": "saldo insuficiente."}, 400
+    
+    if saldo_actual + cantidad > 999.99:
+        return {"error": "El saldo no puede superar los 999.99€."}, 400
+
+    sql = "UPDATE Usuarios SET monedero = monedero + %s WHERE udni = %s"
+    param = (cantidad, udni)
+    enviarCommit(sql, param)
+    
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, udni)
+
+    return flask.jsonify(filas)
 
 
 ##* Ejecutar la app *###
