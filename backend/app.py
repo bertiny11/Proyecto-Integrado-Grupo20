@@ -196,6 +196,86 @@ def end_registro():
         (udni, contrasena, nombre, apellidos))
     return {"message": "Usuario creado"}, 201
 
+@app.route('/reservas/<string:udni>', methods=['GET'])
+def end_ver_reservas(udni):
+    sql = """SELECT 
+            u.udni,
+            u.nombre,
+            u.apellidos,
+            pr.es_creador,
+            pr.pagado,
+            r.hora_inicio,
+            r.duracion,
+            r.nivel_de_juego,
+            r.tipo,
+            r.huecos_libres,
+            r.estado,
+            e.nombre AS empresa
+        FROM Usuarios u
+        JOIN ParticipantesReserva pr ON u.uid = pr.usuario
+        JOIN Reserva r ON pr.reserva = r.rid
+        JOIN Pistas p ON r.pista = p.pid
+        JOIN Empresas e ON p.empresa = e.eid
+        WHERE u.udni = %s
+        ORDER BY r.hora_inicio DESC;"""
+    
+    filas = enviarSelect(sql, [udni])
+
+    if not filas:
+        return {"Error": "No existen reservas para este usuario"}, 404
+    
+    normalizarHoras(filas)
+    return flask.jsonify(filas)
+
+@app.route('/modificarreserva', methods=['POST'])
+def end_modificar_reserva():
+    datos = flask.request.get_json()
+    sql = """UPDATE Reserva r
+            JOIN ParticipantesReserva pr ON r.rid = pr.reserva
+            JOIN Usuarios u ON pr.usuario = u.uid
+            SET r.hora_inicio = %s,
+                r.duracion = %s,
+                r.nivel_de_juego = %s,
+                r.tipo = %s,
+                r.huecos_libres = %s,
+                r.estado = %s
+            WHERE u.udni = %s AND r.rid = %s AND pr.es_creador = 1;"""
+
+    param = (datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
+            datos.get("tipo"), datos.get("huecos_libres"), datos.get("estado"),
+            datos.get("udni"), datos.get("rid"))
+    
+    resultado = enviarCommit(sql, param)
+    return flask.jsonify(resultado)
+
+@app.route('/actualizarmonedero', methods=['POST'])
+def end_actualizar_monedero():
+    datos = flask.request.get_json()
+    udni = datos.get("udni")
+    cantidad = float(datos.get("cantidad"))
+
+    sql_saldo = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql_saldo, udni)
+
+    if not filas:
+        return {"error": "usuario no encontrado."}, 404
+    
+    saldo_actual = float(filas[0]['monedero'])
+    
+    if saldo_actual + cantidad < 0:
+        return {"error": "saldo insuficiente."}, 400
+    
+    if saldo_actual + cantidad > 999.99:
+        return {"error": "El saldo no puede superar los 999.99€."}, 400
+
+    sql = "UPDATE Usuarios SET monedero = monedero + %s WHERE udni = %s"
+    param = (cantidad, udni)
+    enviarCommit(sql, param)
+    
+    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
+    filas = enviarSelect(sql, udni)
+
+    return flask.jsonify(filas)
 
 
 ##* Ejecutar la app *###
