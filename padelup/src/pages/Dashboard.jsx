@@ -7,10 +7,16 @@ import { format, addDays, subDays } from 'date-fns';
 import '../styles/Home.css';
 import '../styles/Dashboard.css';
 import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
+import { getEmpresas, getEmpresa } from '../services/api';
 
 registerLocale('es', es);
 
-// Custom Styles for React Select
+/* 
+ estilos personalizados para los componentes react-select (fecha y hora en la busqueda)
+ define la apariencia de los selectores dropdown incluyendo colores, bordes,
+ animaciones y estados de hover/focus
+ */
+
 const customSelectStyles = {
   control: (provided, state) => ({
     ...provided,
@@ -86,7 +92,11 @@ const customSelectStyles = {
   })
 };
 
-// Options for Selects
+/* 
+ configuración de opciones para los filtros de búsqueda
+ define los valores disponibles en los selectores de ordenamiento y tipo de pista
+ */
+
 const sortOptions = [
   { value: 'distance', label: 'Distancia' },
   { value: 'price', label: 'Precio' }
@@ -98,14 +108,36 @@ const courtOptions = [
   { value: 'glass', label: 'Cristal' }
 ];
 
+/* 
+ componente principal dashboard
+ gestiona todas las vistas de la aplicación (dashboard inicial, búsqueda de clubes y detalles)
+ maneja el estado de navegación, reservas, filtros y selección de horarios
+ */
+
 function Dashboard({ onNavigate }) {
+  /* 
+   estados principales del componente
+   controlan la vista activa, club seleccionado, filtros de búsqueda,
+   fecha de reserva, slots seleccionados y estados de UI como dropdowns
+   */
+  
   const [showDropdown, setShowDropdown] = useState(false);
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details' | 'profile'
   const [selectedClub, setSelectedClub] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [bookingDate, setBookingDate] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario
   const scrollContainerRefs = useRef({});
+  
+  /* 
+   estados para datos de la base de datos
+   allClubs: lista de todas las empresas/clubes cargadas desde la API
+   loading: indica si se están cargando datos
+   error: almacena errores de conexión o carga
+   */
+  const [allClubs, setAllClubs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Search States
   const [filters, setFilters] = useState({
@@ -114,10 +146,10 @@ function Dashboard({ onNavigate }) {
     date: new Date(),
     timeStart: null,
     timeEnd: null,
-    sortBy: 'distance' // 'distance', 'price'
+    sortBy: 'price'
   });
 
-  // 1. CARGAR DATOS DEL USUARIO
+  // Cargar datos del usuario desde localStorage
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -133,7 +165,7 @@ function Dashboard({ onNavigate }) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    onNavigate('auth'); // O 'home'
+    onNavigate('auth');
   };
 
   const handleClubClick = (club) => {
@@ -142,7 +174,6 @@ function Dashboard({ onNavigate }) {
     setSelectedClub(fullClubData || club);
     setView('club-details');
     setBookingDate(new Date());
-    setCurrentImageIndex(0);
     window.scrollTo(0, 0);
   };
 
@@ -150,9 +181,11 @@ function Dashboard({ onNavigate }) {
   const [hoveredSlot, setHoveredSlot] = useState(null); // { courtId, time }
   const [dateTransitioning, setDateTransitioning] = useState(false);
   const [dateDirection, setDateDirection] = useState('right'); // 'left' or 'right'
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // Handle date change with animation
+  /* 
+   manejador de cambio de fecha con animación
+   actualiza la fecha de reserva con transición visual suave
+   */
   const handleDateChange = (newDate, direction) => {
     setDateDirection(direction);
     setDateTransitioning(true);
@@ -162,23 +195,28 @@ function Dashboard({ onNavigate }) {
     }, 75);
   };
 
-  // Image carousel auto-rotation
-  useEffect(() => {
-    if (view === 'club-details' && selectedClub && selectedClub.galleryImages) {
-      const interval = setInterval(() => {
-        setCurrentImageIndex((prevIndex) => 
-          (prevIndex + 1) % selectedClub.galleryImages.length
-        );
-      }, 3000); // Change image every 3 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [view, selectedClub]);
-
-  // Helper function to get opening hours for a specific date
+  /* 
+   función para obtener los horarios de apertura de un club en una fecha específica
+   soporta tanto formato string "HH:MM - HH:MM" como objeto con días de la semana
+   retorna un objeto con openingTime y closingTime en formato HH:MM
+   si no hay datos, devuelve horarios por defecto 08:00 - 22:00
+   */
   const getOpeningHours = (club, date) => {
     if (!club || !club.openingHours) return { openingTime: '08:00', closingTime: '22:00' };
     
+    // Si openingHours es un string simple "HH:MM - HH:MM"
+    if (typeof club.openingHours === 'string') {
+      const parts = club.openingHours.split(' - ');
+      if (parts.length === 2) {
+        return { 
+          openingTime: parts[0].trim(), 
+          closingTime: parts[1].trim() 
+        };
+      }
+      return { openingTime: '08:00', closingTime: '22:00' };
+    }
+    
+    // Si openingHours es un objeto con días de la semana
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[date.getDay()];
     const hoursString = club.openingHours[dayName];
@@ -186,16 +224,23 @@ function Dashboard({ onNavigate }) {
     if (!hoursString) return { openingTime: '08:00', closingTime: '22:00' };
     
     const [openingTime, closingTime] = hoursString.split(' - ');
-    return { openingTime, closingTime };
+    return { openingTime: openingTime.trim(), closingTime: closingTime.trim() };
   };
 
-  // Helper function to convert time string to minutes
+  /* 
+   función auxiliar para convertir una cadena de tiempo HH:MM a minutos totales
+   facilita los cálculos de duración y comparaciones entre horarios
+   */
   const timeToMinutes = (timeString) => {
     const [hours, minutes] = timeString.split(':').map(Number);
     return hours * 60 + minutes;
   };
 
-  // Helper function to check if a slot is in the past
+  /* 
+   función auxiliar para verificar si un slot ya ha pasado
+   compara la fecha y hora del slot con el momento actual
+   previene la selección de slots en el pasado
+   */
   const isSlotInPast = (slotDate, timeSlot) => {
     const now = new Date();
     const [slotHours, slotMinutes] = timeSlot.split(':').map(Number);
@@ -204,11 +249,17 @@ function Dashboard({ onNavigate }) {
     return slotDateTime < now;
   };
 
+  /* 
+   manejador de click en un slot de reserva
+   calcula la duración disponible hacia atrás y adelante del slot seleccionado
+   verifica las políticas de duración mínima y máxima del club
+   busca slots consecutivos disponibles para formar bloques de reserva válidos
+   */
   const handleSlotClick = (court, time) => {
-    // Check if slot is in the past
+    /* verifica si el slot ya pasó */
     if (isSlotInPast(bookingDate, time)) return;
     
-    const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 90 };
+    const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
     const maxDuration = policy.maxDuration;
     const [startH, startM] = time.split(':').map(Number);
@@ -268,20 +319,22 @@ function Dashboard({ onNavigate }) {
     
     const totalAvailable = availableMinutes + backwardsMinutes;
     const options = [];
-    const basePricePerMin = (selectedClub.price || 15.60) / 60; 
+    // Precio fijo por defecto
+    const basePricePerHour = 15.00; // El precio es por hora
     
     // Generate standard options
     for (let d = minDuration; d <= maxDuration; d += 30) {
       if (d <= totalAvailable) {
         options.push({
           duration: d,
-          label: `${Math.floor(d/60)} h y ${d%60} min`,
-          price: basePricePerMin * d
+          label: `${Math.floor(d/60)} h${d%60 > 0 ? ` y ${d%60} min` : ''}`,
+          price: (basePricePerHour / 60) * d
         });
       }
     }
 
-    const defaultOption = options.find(o => o.duration === minDuration) || options[0];
+    // Por defecto seleccionar 90 minutos si está disponible, sino la duración mínima
+    const defaultOption = options.find(o => o.duration === 90) || options.find(o => o.duration === minDuration) || options[0];
 
     if (defaultOption) {
       // Calculate start time based on forward allocation priority
@@ -316,6 +369,11 @@ function Dashboard({ onNavigate }) {
     }
   };
 
+  /* 
+   manejador de selección de duración de reserva
+   recalcula la hora de inicio basada en la nueva duración seleccionada
+   distribuye el tiempo hacia adelante primero, luego hacia atrás si es necesario
+   */
   const handleDurationSelect = (duration) => {
     setSelectedSlot(prev => {
       // Recalculate start time based on new duration
@@ -344,12 +402,21 @@ function Dashboard({ onNavigate }) {
     });
   };
 
+  /* 
+   manejador para cerrar el popover de selección de slot
+   limpia el estado del slot seleccionado
+   */
   const handleClosePopover = () => {
     setSelectedSlot(null);
   };
 
+  /* 
+   manejador de hover sobre un slot de reserva
+   calcula y muestra visualmente la disponibilidad hacia adelante y atrás
+   ignora slots que ya han pasado
+   */
   const handleSlotMouseEnter = (courtId, time) => {
-    // Don't hover on past slots
+    /* no permite hover en slots pasados */
     if (isSlotInPast(bookingDate, time)) {
       setHoveredSlot(null);
       return;
@@ -420,17 +487,26 @@ function Dashboard({ onNavigate }) {
     setHoveredSlot({ courtId, time, availableMinutes, backwardsMinutes });
   };
 
+  /* 
+   manejador cuando el mouse sale de un slot
+   limpia el estado de hover para ocultar la visualización de disponibilidad
+   */
   const handleSlotMouseLeave = () => {
     setHoveredSlot(null);
   };
 
+  /* 
+   función para verificar si un slot puede ser reservado
+   comprueba disponibilidad del slot, si está en el pasado,
+   y si cumple con la duración mínima requerida por las políticas del club
+   */
   const checkBookability = (court, timeSlot) => {
     const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
     
     if (!court.slots.includes(timeSlot)) return false;
     
-    // Check if slot is in the past
+    /* verifica si el slot ya pasó */
     if (isSlotInPast(bookingDate, timeSlot)) return false;
     
     if (minDuration <= 30) return true;
@@ -495,18 +571,22 @@ function Dashboard({ onNavigate }) {
     return totalConsecutive >= minDuration;
   };
 
-  // Helper function to get available slots for club search view
+  /* 
+   función auxiliar para obtener los slots disponibles de un club en la vista de búsqueda
+   filtra todos los slots de todas las pistas del club
+   excluye slots pasados y verifica que cumplan la duración mínima de reserva
+   */
   const getAvailableSlots = (club) => {
     const now = new Date();
     const policy = club.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
     
-    // Get all unique slots from all courts
+    /* obtiene todos los slots únicos de todas las pistas */
     const allSlots = [...new Set(club.courts.flatMap(court => court.slots))];
     
-    // Filter slots that are bookable
+    /* filtra slots que pueden ser reservados */
     const bookableSlots = allSlots.filter(slot => {
-      // Check if slot is in the past (using current date/time)
+      /* verifica si el slot está en el pasado usando la fecha/hora actual */
       const [slotHours, slotMins] = slot.split(':').map(Number);
       const slotDateTime = new Date();
       slotDateTime.setHours(slotHours, slotMins, 0, 0);
@@ -594,6 +674,11 @@ function Dashboard({ onNavigate }) {
     return bookableSlots.sort();
   };
 
+  /* 
+   verifica si un slot está dentro del rango de hover
+   calcula el rango basado en el slot sobre el que está el mouse
+   prioriza asignación hacia adelante, usa slots hacia atrás solo si es necesario
+   */
   const isSlotInHoverRange = (courtId, slotTime) => {
     if (!hoveredSlot || hoveredSlot.courtId !== courtId) return false;
     
@@ -630,6 +715,11 @@ function Dashboard({ onNavigate }) {
     return currentMins >= rangeStart && currentMins < rangeEnd;
   };
 
+  /* 
+   verifica si un slot está dentro del rango seleccionado
+   calcula el rango basado en el slot seleccionado y la duración elegida
+   usa la misma lógica de priorizar asignación hacia adelante
+   */
   const isSlotInSelectedRange = (courtId, slotTime) => {
     if (!selectedSlot || selectedSlot.courtId !== courtId) return false;
     
@@ -655,7 +745,10 @@ function Dashboard({ onNavigate }) {
     return currentMins >= rangeStart && currentMins < rangeEnd;
   };
 
-  // Drag scroll functionality
+  /* 
+   efecto para habilitar funcionalidad de arrastre con el mouse en los contenedores de slots
+   permite hacer scroll horizontal arrastrando con el mouse
+   */
   useEffect(() => {
     const containers = Object.values(scrollContainerRefs.current);
     
@@ -705,122 +798,181 @@ function Dashboard({ onNavigate }) {
     });
   }, [view]);
 
-  // Extended Mock Data for Search
-  const allClubs = [
-    {
-      id: 1,
-      name: "Club de pádel La Via",
-      distance: 0.5,
-      price: 20,
-      level: "Intermedio",
-      image: "https://media.pistaenjuego.ovh/images/center/3/1/2/l.sanlucar-padel-club-1_1411416213.jpg",
-      location: "Av. Al-Andalus, 123, 11540 Sanlúcar de Barrameda, Cádiz",
-      bookingPolicy: {
-        minDuration: 60,
-        maxDuration: 120
-      },
-      description: "Somos el primer club de padel en el centro de Sanlúcar de Barrameda con 6 pistas de cristal panorámicas. Contamos con profesores certificados, vestuarios de lujo y una zona social con cafetería y tienda especializada.",
-      amenities: ["Acceso Minusválidos", "Alquiler Material", "Parking Gratuito", "Tienda", "Cafetería", "Vestuarios", "Taquillas", "WiFi", "Gimnasio"],
-      galleryImages: [
-        "https://polideportivolarraona.org/wp-content/uploads/2024/03/origen-padel.jpg",
-        "https://swisspadel.ch/wp-content/uploads/2024/07/DSC01134-1-2048x1366.jpg",
-        "https://skypadel.com/wp-content/uploads/2023/05/pista-pro-padel-league-2-1-1080x675.jpg",
-      ],
-      openingHours: {
-        monday: "13:00 - 21:00",
-        tuesday: "09:00 - 23:00",
-        wednesday: "09:00 - 23:00",
-        thursday: "09:00 - 23:00",
-        friday: "09:00 - 23:00",
-        saturday: "09:00 - 22:00",
-        sunday: "09:00 - 22:00"
-      },
-      courts: [
-        { id: 'c1', name: 'Pista Central', type: 'glass', slots: ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00','22:30'] },
-        { id: 'c2', name: 'Pista 2', type: 'wall', slots: ['09:00', '09:30', '17:00'] },
-        { id: 'c3', name: 'Pista 3', type: 'glass', slots: ['10:00', '11:00', '18:00'] },
-        { id: 'c4', name: 'Pista 4', type: 'glass', slots: ['09:00', '10:00', '11:00', '12:00'] }
-      ]
-    },
-    {
-      id: 2,
-      name: "El Moral",
-      distance: 5.1,
-      price: 15,
-      level: "Avanzado",
-      image: "https://www.padelelmoral.com/graf/fondo/movil/imagen_02.jpg",
-      location: "Camino del Pino de la Jara, 2, 11540 Sanlúcar de Barrameda, Cádiz",
-      description: "Club exclusivo en un entorno natural privilegiado. Ideal para desconectar y disfrutar del deporte al aire libre.",
-      amenities: ["Parking", "Restaurante", "Piscina", "Gimnasio"],
-      openingHours: {
-        monday: "08:00 - 22:00",
-        weekend: "09:00 - 21:00"
-      },
-      courts: [
-        { id: 'c3', name: 'Pista Azul', type: 'glass', slots: ['18:00','18:30','19:00','19:30','20:00'] }
-      ]
-    },
-    {
-      id: 3,
-      name: "Club de Padel Puerto Sherry",
-      distance: 3.2,
-      price: 25,
-      level: "Avanzado",
-      image: "https://www.puertosherry.com/wp-content/uploads/2021/07/Puertosherry_actividades_clubpadel_1.jpeg",
-      location: "Av. de la Libertad, S/N, 11500 El Puerto de Sta María, Cádiz",
-      description: "Las mejores instalaciones indoor de la zona norte. Climatización perfecta todo el año.",
-      amenities: ["Indoor", "Climatizado", "Bar", "Tienda Pro"],
-      openingHours: {
-        monday: "13:00 - 21:00",
-        tuesday: "09:00 - 23:00",
-        wednesday: "09:00 - 23:00",
-        thursday: "09:00 - 23:00",
-        weekend: "09:00 - 22:00"
-        },
-        bookingPolicy: {
-        minDuration: 30,
-        maxDuration: 120
-      },
-      courts: [
-        { id: 'c4', name: 'Pista 1', type: 'glass', slots: ['10:00', '12:00','12:30', '14:00'] },
-        { id: 'c5', name: 'Pista 2', type: 'glass', slots: ['16:00', '18:00'] }
-      ]
-    },
-    {
-      id: 4,
-      name: "Club de Pádel Nuevo Jacaranda",
-      distance: 8.5,
-      price: 12,
-      level: "Intermedio",
-      bookingPolicy: {
-        minDuration: 90,
-        maxDuration: 120
-      },
-      openingHours: {
-        monday: "07:00 - 23:00",
-        weekend: "08:00 - 22:00"
-      },
-      image: "https://www.gestecosl.com/wp-content/uploads/2021/03/jacaranda-padel-gesteco-15.png",
-      location: "Av. del Altillo, S/N, 11405 Jerez de la Frontera, Cádiz",
-      courts: [
-        { id: 'c6', name: 'Muro 1', type: 'wall', slots: ['09:00','09:30','10:00', '10:30', '12:00','21:00','21:30','22:00','22:30'] }
-      ]
-    }
-  ];
+  /* 
+   efecto para cargar las empresas/clubes desde la base de datos
+   se ejecuta una vez al montar el componente
+   transforma los datos de la API al formato esperado por el componente
+   */
+  useEffect(() => {
+    const cargarEmpresas = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await getEmpresas();
+        const empresasDB = response.data;
+        
+        // Transformar datos de la BD al formato del componente
+        const clubsFormateados = empresasDB.map(empresa => {
+          // Precio fijo por defecto
+          const precioFijo = 15.00;
+          
+          // Formatear horarios (pueden venir como "H:MM:SS" o "HH:MM:SS")
+          const formatearHora = (hora) => {
+            if (!hora) return '08:00';
+            const parts = hora.split(':');
+            const h = parseInt(parts[0]);
+            const m = parseInt(parts[1]) || 0;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          };
+          
+          const horaApertura = formatearHora(empresa.hora_apertura);
+          const horaCierre = formatearHora(empresa.hora_cierre);
+          
+          // Generar slots disponibles basados en horario de apertura
+          const generarSlots = (apertura, cierre) => {
+            const slots = [];
+            const [aperturaH] = apertura.split(':').map(Number);
+            const [cierreH] = cierre.split(':').map(Number);
+            
+            for (let h = aperturaH; h < cierreH; h++) {
+              slots.push(`${h.toString().padStart(2, '0')}:00`);
+              slots.push(`${h.toString().padStart(2, '0')}:30`);
+            }
+            return slots;
+          };
+          
+          // Formatear pistas
+          const courts = empresa.pistas ? empresa.pistas.map((pista, index) => ({
+            id: `p${pista.pid}`,
+            name: `Pista ${index + 1}`,
+            type: pista.tipo === 'cristal' ? 'glass' : 'wall',
+            indoor: pista.indoor === 1,
+            slots: generarSlots(horaApertura, horaCierre)
+          })) : [];
+          
+          return {
+            id: empresa.eid,
+            name: empresa.nombre,
+            price: precioFijo,
+            image: "/padelup_logo2.png", // Imagen por defecto
+            location: empresa.direccion,
+            bookingPolicy: {
+              minDuration: 60,
+              maxDuration: 120
+            },
+            openingHours: `${horaApertura} - ${horaCierre}`,
+            courts: courts
+          };
+        });
+        
+        setAllClubs(clubsFormateados);
+      } catch (err) {
+        console.error('Error al cargar empresas:', err);
+        setError('Error al cargar los clubes. Por favor, intenta de nuevo.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    cargarEmpresas();
+  }, []);
 
-  // Filter Logic
+  /* 
+   efecto para cargar la disponibilidad cuando se selecciona un club o cambia la fecha
+   obtiene las reservas existentes y actualiza los slots disponibles
+   */
+  useEffect(() => {
+    const cargarDisponibilidad = async () => {
+      if (!selectedClub || view !== 'club-details') return;
+      
+      try {
+        const fechaFormateada = format(bookingDate, 'yyyy-MM-dd');
+        // Usamos el endpoint /empresa/<nombre> con parámetro fecha
+        const response = await getEmpresa(selectedClub.name, fechaFormateada);
+        const empresaData = response.data;
+        
+        // Actualizar los slots de cada pista basándose en las reservas
+        const courtsActualizados = selectedClub.courts.map(court => {
+          const pistaDB = empresaData.pistas?.find(p => `p${p.pid}` === court.id);
+          
+          if (!pistaDB) return court;
+          
+          // Filtrar slots ocupados por reservas
+          const reservas = pistaDB.reservas || [];
+          const slotsOcupados = new Set();
+          
+          reservas.forEach(reserva => {
+            // hora_inicio puede venir como "HH:MM:SS" o "HH:MM"
+            const horaInicioParts = reserva.hora_inicio.split(':');
+            const horaInicio = parseInt(horaInicioParts[0]);
+            const minInicio = parseInt(horaInicioParts[1]) || 0;
+            const duracionMinutos = reserva.duracion || 60;
+            const duracionSlots = duracionMinutos / 30;
+            
+            // Calcular los slots ocupados basándose en la hora de inicio real
+            let currentMinutes = horaInicio * 60 + minInicio;
+            for (let i = 0; i < duracionSlots; i++) {
+              const hora = Math.floor(currentMinutes / 60);
+              const min = currentMinutes % 60;
+              slotsOcupados.add(`${hora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+              currentMinutes += 30;
+            }
+          });
+          
+          // Generar slots disponibles
+          // Formatear hora_apertura y hora_cierre (pueden venir como "H:MM:SS" o "HH:MM:SS")
+          const formatearHora = (hora) => {
+            if (!hora) return '08:00';
+            const parts = hora.split(':');
+            const h = parseInt(parts[0]);
+            const m = parseInt(parts[1]) || 0;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+          };
+          
+          const horaApertura = formatearHora(empresaData.hora_apertura);
+          const horaCierre = formatearHora(empresaData.hora_cierre);
+          const [aperturaH] = horaApertura.split(':').map(Number);
+          const [cierreH] = horaCierre.split(':').map(Number);
+          
+          const slotsDisponibles = [];
+          for (let h = aperturaH; h < cierreH; h++) {
+            const slot1 = `${h.toString().padStart(2, '0')}:00`;
+            const slot2 = `${h.toString().padStart(2, '0')}:30`;
+            if (!slotsOcupados.has(slot1)) slotsDisponibles.push(slot1);
+            if (!slotsOcupados.has(slot2)) slotsDisponibles.push(slot2);
+          }
+          
+          return { ...court, slots: slotsDisponibles };
+        });
+        
+        setSelectedClub(prev => ({ ...prev, courts: courtsActualizados }));
+        
+      } catch (err) {
+        console.error('Error al cargar disponibilidad:', err);
+      }
+    };
+    
+    cargarDisponibilidad();
+  }, [selectedClub?.name, bookingDate, view]);
+
+  /* 
+   función de filtrado de clubes según criterios de búsqueda
+   aplica filtros de búsqueda por nombre, tipo de pista, fecha y rango horario
+   ordena los resultados según el criterio seleccionado (precio o distancia)
+   */
   const getFilteredClubs = () => {
     let filtered = allClubs.filter(club => {
-      // Search Query
+      /* filtro por nombre de club */
       if (filters.searchQuery && !club.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
         return false;
       }
-      // Check if club has at least one court of the selected type
+      /* verifica si el club tiene al menos una pista del tipo seleccionado */
       if (filters.courtType !== 'all') {
         const hasCourtType = club.courts.some(c => c.type === filters.courtType);
         if (!hasCourtType) return false;
       }
-      // Time range filtering would go here (checking slots against timeStart/End)
+      /* filtrado por rango horario - verifica que el club tenga slots disponibles en el rango */
       if (filters.timeStart && filters.timeEnd) {
          const formatTime = (date) => {
            if (!date) return '';
@@ -837,44 +989,46 @@ function Dashboard({ onNavigate }) {
       return true;
     });
 
-    // Sorting Logic
+    /* ordenamiento de resultados según criterio seleccionado */
     filtered.sort((a, b) => {
-      // 1. Level Priority (Exact match > +/- 1 level > others)
-      // Simplified level mapping: Principiante=1, Intermedio=2, Avanzado=3
-      const levels = { "Principiante": 1, "Intermedio": 2, "Avanzado": 3 };
-      const userLvlVal = levels[userLevel];
-      const aLvlVal = levels[a.level];
-      const bLvlVal = levels[b.level];
-
-      const aDiff = Math.abs(userLvlVal - aLvlVal);
-      const bDiff = Math.abs(userLvlVal - bLvlVal);
-
-      if (aDiff !== bDiff) return aDiff - bDiff;
-
-      // 2. Secondary Sort
+      /* ordena por precio si está seleccionado */
       if (filters.sortBy === 'price') return a.price - b.price;
-      return a.distance - b.distance;
+      // return a.distance - b.distance;
+      return 0; // Sin ordenación por distancia
     });
 
     return filtered;
   };
 
-  // Get recommended clubs (3 closest clubs)
+  /* 
+   lista de clubes recomendados para mostrar en la vista principal del dashboard
+   toma los primeros 3 clubes de la lista completa
+   incluye rating mock de 4.8 estrellas para cada club
+   */
   const recommendedClubs = [...allClubs]
-    .sort((a, b) => a.distance - b.distance)
+    // .sort((a, b) => a.distance - b.distance)
     .slice(0, 3)
     .map(club => ({
       id: club.id,
       name: club.name,
-      distance: `${club.distance} km`,
+      // distance: `${club.distance} km`,
       rating: 4.8, // Mock rating, podría venir de los datos del club
       image: club.image,
       location: club.location
     }));
 
+  /* 
+   ========================================
+   renderizado principal del componente dashboard
+   muestra tres vistas diferentes según el estado 'view':
+   - 'dashboard': pantalla principal con clubes recomendados
+   - 'club-details': detalles del club con grid de reservas por pistas
+   - 'club-search': búsqueda de clubes con filtros
+   ========================================
+   */
+  
   return (
     <div className="dashboard-container">
-      {/* Navbar */}
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo" onClick={() => {
@@ -905,11 +1059,10 @@ function Dashboard({ onNavigate }) {
         </div>
 
         <div className="navbar-right">
-           {/* 2. BOTÓN MI CUENTA: Ahora cambia la vista a 'profile' */}
-          <button 
+           <button 
                 className={`user-account-btn ${view === 'profile' ? 'active' : ''}`}
                 onClick={() => setView('profile')}
-          >
+           >
               <div className="user-avatar">
                   {currentUser?.nombre ? currentUser.nombre.charAt(0).toUpperCase() : 'U'}
               </div>
@@ -923,7 +1076,6 @@ function Dashboard({ onNavigate }) {
         <div key={view} className="view-transition">
         {view === 'dashboard' ? (
           <>
-            {/* Recommended Clubs Section */}
             <section className="dashboard-section fade-in">
               <div className="section-header">
                 <div>
@@ -936,11 +1088,20 @@ function Dashboard({ onNavigate }) {
               </div>
               
               <div className="cards-grid">
-                {recommendedClubs.map(club => (
+                {loading && (
+                  <div className="loading-message">
+                    <p>Cargando clubes...</p>
+                  </div>
+                )}
+                {error && (
+                  <div className="error-message">
+                    <p>{error}</p>
+                  </div>
+                )}
+                {!loading && !error && recommendedClubs.map(club => (
                   <div key={club.id} className="club-card" onClick={() => handleClubClick(club)}>
                     <div className="card-image-wrapper">
                       <img src={club.image} alt={club.name} className="card-image" />
-                      <span className="distance-badge">{club.distance}</span>
                     </div>
                     <div className="card-content">
                       <div className="card-header-row">
@@ -957,7 +1118,6 @@ function Dashboard({ onNavigate }) {
               </div>
             </section>
           </>
-          /* VISTA 2: PERFIL DE USUARIO (NUEVA) */
         ) : view === 'profile' ? (
             <section className="profile-section fade-in" style={{padding: '2rem', maxWidth: '800px', margin: '0 auto'}}>
                 <h2 className="section-title" style={{marginBottom: '2rem'}}>Mi Perfil</h2>
@@ -1008,13 +1168,13 @@ function Dashboard({ onNavigate }) {
                                 <span style={{display: 'block', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem'}}>Valoración</span>
                                 <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
                                     <span style={{fontSize: '1.5rem', fontWeight: '600'}}>
-                                        {currentUser.valoracion || '0.0'}
+                                        {currentUser.valoración || '0.0'}
                                     </span>
                                     <span style={{color: '#FBBF24', fontSize: '1.5rem'}}>★</span>
                                 </div>
                             </div>
 
-                             {/* Tarjeta Nivel (Opcional si lo añadiste al backend) */}
+                             {/* Tarjeta Nivel */}
                             <div style={{
                                 padding: '1.5rem', borderRadius: '12px', border: '1px solid #e5e7eb',
                                 backgroundColor: '#f9fafb'
@@ -1051,7 +1211,6 @@ function Dashboard({ onNavigate }) {
                 )}
             </section>
         ) : view === 'club-details' && selectedClub ? (
-          /* Club Details View */
           <section className="club-details-section fade-in">
             {/* Header with Image */}
             <div className="club-details-header" style={{backgroundImage: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url(${selectedClub.image})`}}>
@@ -1234,94 +1393,31 @@ function Dashboard({ onNavigate }) {
                     </div>
                   </div>
                   
-                  <div className="info-card">
+                  {/* <div className="info-card">
                     <h3>Servicios</h3>
                     <div className="amenities-tags">
                       {selectedClub.amenities?.map(amenity => (
                         <span key={amenity} className="amenity-tag">{amenity}</span>
                       )) || <span className="no-info">Información no disponible</span>}
                     </div>
-                  </div>
+                  </div> */}
 
                   <div className="info-card">
                     <h3>Horario</h3>
                     <div className="opening-hours-list">
-                      {selectedClub.openingHours ? Object.entries(selectedClub.openingHours).map(([day, hours]) => {
-                        const daysInSpanish = {
-                          'monday': 'Lunes',
-                          'tuesday': 'Martes',
-                          'wednesday': 'Miércoles',
-                          'thursday': 'Jueves',
-                          'friday': 'Viernes',
-                          'saturday': 'Sábado',
-                          'sunday': 'Domingo',
-                          'weekend': 'Fin de semana'
-                        };
-                        const dayName = daysInSpanish[day] || day.charAt(0).toUpperCase() + day.slice(1);
-                        return (
-                          <div key={day} className="hour-row">
-                            <span className="day-name">{dayName}</span>
-                            <span className="hours-val">{hours}</span>
-                          </div>
-                        );
-                      }) : <p>Horario no disponible</p>}
+                      {selectedClub.openingHours ? (
+                        <div className="hour-row">
+                          <span className="day-name">Todos los días</span>
+                          <span className="hours-val">{selectedClub.openingHours}</span>
+                        </div>
+                      ) : <p>Horario no disponible</p>}
                     </div>
                   </div>
                 </div>
               </div>
-
-              {/* Description Section */}
-              <div className="club-description-section">
-                <h3>Sobre {selectedClub.name}</h3>
-                <p>{selectedClub.description || "No hay descripción disponible para este club."}</p>
-                
-                {/* Image Gallery Carousel */}
-                {selectedClub.galleryImages && selectedClub.galleryImages.length > 0 && (
-                  <div className="club-gallery-carousel">
-                    <div className="carousel-image-container">
-                      {selectedClub.galleryImages.map((img, index) => (
-                        <img
-                          key={index}
-                          src={img}
-                          alt={`${selectedClub.name} - Imagen ${index + 1}`}
-                          className={`carousel-image ${index === currentImageIndex ? 'active' : ''}`}
-                        />
-                      ))}
-                      <button 
-                        className="carousel-nav-btn carousel-nav-prev"
-                        onClick={() => setCurrentImageIndex((prev) => 
-                          prev === 0 ? selectedClub.galleryImages.length - 1 : prev - 1
-                        )}
-                        aria-label="Imagen anterior"
-                      >
-                        ‹
-                      </button>
-                      <button 
-                        className="carousel-nav-btn carousel-nav-next"
-                        onClick={() => setCurrentImageIndex((prev) => 
-                          (prev + 1) % selectedClub.galleryImages.length
-                        )}
-                        aria-label="Imagen siguiente"
-                      >
-                        ›
-                      </button>
-                    </div>
-                    <div className="carousel-indicators">
-                      {selectedClub.galleryImages.map((_, index) => (
-                        <button
-                          key={index}
-                          className={`indicator ${index === currentImageIndex ? 'active' : ''}`}
-                          onClick={() => setCurrentImageIndex(index)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </section>
         ) : (
-          /* Club Search View */
           <section className="club-search-section fade-in">
             <div className="search-header">
               <button className="btn-back" onClick={() => setView('dashboard')}>← Volver</button>
@@ -1433,20 +1529,32 @@ function Dashboard({ onNavigate }) {
 
             {/* Results List */}
             <div className="search-results">
-              {getFilteredClubs().map(club => (
+              {loading && (
+                <div className="loading-message">
+                  <p>Cargando clubes...</p>
+                </div>
+              )}
+              {error && (
+                <div className="error-message">
+                  <p>{error}</p>
+                </div>
+              )}
+              {!loading && !error && getFilteredClubs().length === 0 && (
+                <div className="no-results-message">
+                  <p>No se encontraron clubes con los filtros seleccionados</p>
+                </div>
+              )}
+              {!loading && !error && getFilteredClubs().map(club => (
                 <div key={club.id} className="search-club-card" onClick={() => handleClubClick(club)}>
                   <div className="search-club-image">
                     <img src={club.image} alt={club.name} />
-                    <div className="search-club-badges">
-                      <span className="badge-level">{club.level}</span>
-                    </div>
                   </div>
                   <div className="search-club-info">
                     <div className="search-club-header">
                       <h3>{club.name}</h3>
                       <span className="price-tag">desde {club.price}€</span>
                     </div>
-                    <p className="location-text">{club.location} • {club.distance} km</p>
+                    <p className="location-text">{club.location}</p>
                     
                     <div className="available-slots-section">
                       <h4>Horarios Disponibles:</h4>
@@ -1469,8 +1577,6 @@ function Dashboard({ onNavigate }) {
         )}
         </div>
       </main>
-
-      {/* Footer Section */}
 
       <footer className="footer-section">
         <div className="footer-container">
