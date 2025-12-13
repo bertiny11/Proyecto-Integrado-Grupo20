@@ -10,6 +10,7 @@ CREATE TABLE `Usuarios` (
   `contrasena` varchar(100),        -- UCA no necesita contrasenas
   `nombre` varchar(100) NOT NULL,
   `apellidos` varchar(200) NOT NULL,
+  `cp` varchar(100) DEFAULT NULL,
   `monedero` decimal(5,2) NOT NULL DEFAULT 0.00, -- max 999.99
   `nivel_de_juego`  enum('A','B','C','D','F') NOT NULL DEFAULT 'F',
   `valoracion` decimal(3,1) NOT NULL DEFAULT 0.0, -- 0.0 a 5.0
@@ -42,7 +43,6 @@ CREATE TABLE `Pistas` (
   `empresa` int NOT NULL,             -- referencia a Empresas.eid
   `tipo`  enum('muro','cristal') NOT NULL DEFAULT 'cristal',
   `indoor` boolean NOT NULL DEFAULT 0, -- 0 = outdoor, 1 = indoor
-  `precio` decimal(5,2) NOT NULL DEFAULT 0.00, -- max 999.99
   PRIMARY KEY (`pid`),
   CONSTRAINT `fk_pistas_empresa` FOREIGN KEY (`empresa`) REFERENCES `Empresas`(`eid`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -105,15 +105,15 @@ CREATE TABLE `Valoraciones` (
 -- ********************************
 
 -- Usuarios
-INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'u11111111', 'contrasena_hash', 'Altagracia', 'García', 0.00, 'A', 5.0),
-(2, 'u22222222', 'contrasena_hash', 'Apolinario', 'Martín', 999.99, 'B', 3.8),
-(3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', 5.50,  'C', 0.0),
-(4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', 100.00,'D', 4.9),
-(5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', 50.00,   'F', 1.5),
-(6, 'u66666666', 'contrasena_hash', 'Burgundófora', 'Fernández', 10.00, 'A', 3.7),
-(7, 'u77777777', 'contrasena_hash', 'Cipriniano', 'Torres', 15.00, 'B', 4.2),
-(8, 'u88888888', 'contrasena_hash', 'Expiración', 'Molina', 7.50,  'C', 2.5);
+INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`cp`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
+(1, 'u11111111', 'contrasena_hash', 'Altagracia', 'García', '11500', 0.00, 'A', 5.0),
+(2, 'u22222222', 'contrasena_hash', 'Apolinario', 'Martín', '11408', 999.99, 'B', 3.8),
+(3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', '11009', 5.50,  'C', 0.0),
+(4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', '11411', 100.00,'D', 4.9),
+(5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', '11009', 50.00,   'F', 1.5),
+(6, 'u66666666', 'contrasena_hash', 'Burgundófora', 'Fernández', '11009', 10.00, 'A', 3.7),
+(7, 'u77777777', 'contrasena_hash', 'Cipriniano', 'Torres', '11500', 15.00, 'B', 4.2),
+(8, 'u88888888', 'contrasena_hash', 'Expiración', 'Molina', '11009', 7.50,  'C', 2.5);
 
 -- Sanciones
 INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
@@ -123,24 +123,24 @@ INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
 
 -- Empresas
 INSERT INTO `Empresas` (`eid`,`nombre`,`direccion`,`hora_apertura`,`hora_cierre`) VALUES
-(1, 'UCA', 'C. Republica Saharaui, 11519 Puerto Real, Cádiz', '08:00:00', '21:00:00'),
-(2, 'No se Padel ', 'Jerez', '07:00:00', '20:00:00'),
-(3, 'Padel No se', 'Cádiz', '08:00:00', '21:00:00');
+(1, 'UCA', 'C. Republica Saharaui, 11519, Puerto Real, Cádiz', '08:00:00', '21:00:00'),
+(2, 'Club de Pádel La Via ', 'Av. Al-Andalus 123, 11540, Sanlúcar de Barrameda, Cádiz', '07:00:00', '20:00:00'),
+(3, 'Club de Pádel Nuevo Jacaranda', 'Av. del Altillo S/N, 11405 Jerez de la Frontera, Cádiz', '08:00:00', '21:00:00');
 
 -- Pistas
-INSERT INTO `Pistas` (`pid`,`empresa`,`tipo`,`indoor`,`precio`) VALUES
+INSERT INTO `Pistas` (`pid`,`empresa`,`tipo`,`indoor`) VALUES
   -- Empresa 1
-(1, 1, 'cristal', 0, 2.50),
-(2, 1, 'cristal', 0, 2.50),
-(3, 1, 'cristal', 0, 2.50),
+(1, 1, 'cristal', 0),
+(2, 1, 'cristal', 0),
+(3, 1, 'cristal', 0),
   -- Empresa 2
-(4, 2, 'muro', 0, 6.50),
-(5, 2, 'cristal', 1, 4.50),
-(6, 2, 'muro', 1, 6.50),
+(4, 2, 'muro', 0),
+(5, 2, 'cristal', 1),
+(6, 2, 'muro', 1),
   -- Empresa 3
-(7, 3, 'cristal', 0, 5.50),
-(8, 3, 'muro', 0, 7.50),
-(9, 3, 'cristal', 1, 5.50);
+(7, 3, 'cristal', 0),
+(8, 3, 'muro', 0),
+(9, 3, 'cristal', 1);
 
 -- Reserva
 INSERT INTO `Reserva` (`rid`,`pista`,`hora_inicio`, `duracion`, `nivel_de_juego`,`tipo`,`huecos_libres`,`estado`) VALUES

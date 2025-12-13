@@ -40,4 +40,19 @@ export const loginUser = (payload) => api.post('/login', payload);
 // Retorna: datos del usuario logueado
 export const getProfile = () => api.get('/api/profile');
 
+
+// Obtiene todas las empresas con sus pistas
+// Retorna: array de empresas con información de pistas
+export const getEmpresas = () => api.get('/empresas');
+
+// Obtiene una empresa específica por su nombre
+// Parámetro: nombre (nombre de la empresa)
+// Parámetro opcional: fecha (formato YYYY-MM-DD) para obtener disponibilidad
+// Retorna: datos de la empresa con sus pistas (y reservas si se proporciona fecha)
+export const getEmpresa = (nombre, fecha = null) => {
+    const params = fecha ? { fecha } : {};
+    return api.get(`/empresa/${encodeURIComponent(nombre)}`, { params });
+};
+
+
 export default api;
