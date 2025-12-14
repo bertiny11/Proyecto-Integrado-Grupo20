@@ -146,13 +146,6 @@ def health_check():
 #     usuario = obtenerDatosUsuario(uid)
 #     return flask.jsonify(usuario)
 
-# @app.route('/empresa/<string:nombre>', methods=['GET'])
-# def end_obtenerEmpresa(nombre):
-#     empresa = obtenerDatosEmpresa(nombre)
-#     return flask.jsonify(empresa)
-# #? EJEMPLOS ********
-
-
 @app.route('/login', methods=['POST'])
 def end_login():
     datos = flask.request.get_json()
@@ -372,6 +365,111 @@ def end_empresas_cercanas():
         fila.pop('distancia', None)
 
     return flask.jsonify(filas)
+
+# Hechas por el equipo de front
+@app.route('/empresa/<string:nombre>', methods=['GET'])
+def end_obtenerEmpresa(nombre):
+    """Obtiene una empresa por nombre con sus pistas y opcionalmente disponibilidad"""
+    fecha = flask.request.args.get('fecha')  # formato: YYYY-MM-DD (opcional)
+    
+    sql = """
+        SELECT 
+            e.eid,
+            e.nombre,
+            e.direccion,
+            e.hora_apertura,
+            e.hora_cierre
+        FROM Empresas e
+        WHERE e.nombre = %s
+    """
+    empresas = enviarSelect(sql, nombre)
+    
+    if isinstance(empresas, tuple):
+        return empresas
+    
+    if not empresas:
+        return {"error": "Empresa no encontrada"}, 404
+    
+    empresa = empresas[0]
+    eid = empresa['eid']  # guardamos el eid para consultas
+    normalizarHoras([empresa])
+    empresa.pop('eid', None)  # eliminamos eid de la respuesta
+    
+    # obtener pistas de la empresa
+    sql_pistas = """
+        SELECT 
+            pid,
+            tipo,
+            indoor
+        FROM Pistas 
+        WHERE empresa = %s
+    """
+    pistas = enviarSelect(sql_pistas, eid)
+    
+    if isinstance(pistas, tuple):
+        empresa['pistas'] = []
+    else:
+        # si se proporciona fecha, obtener disponibilidad de cada pista
+        if fecha:
+            for pista in pistas:
+                sql_reservas = """
+                    SELECT hora_inicio, duracion, estado
+                    FROM Reserva 
+                    WHERE pista = %s AND DATE(hora_inicio) = %s AND estado != 'Realizada'
+                """
+                reservas = enviarSelect(sql_reservas, (pista['pid'], fecha))
+                
+                reservas_formateadas = []
+                if not isinstance(reservas, tuple):
+                    for r in reservas:
+                        if isinstance(r['hora_inicio'], datetime.datetime):
+                            r['hora_inicio'] = r['hora_inicio'].strftime('%H:%M')
+                        reservas_formateadas.append(r)
+                
+                pista['reservas'] = reservas_formateadas
+        
+        empresa['pistas'] = pistas
+    
+    return flask.jsonify(empresa)
+
+
+@app.route('/empresas', methods=['GET'])
+def end_obtenerEmpresas():
+    """Obtiene todas las empresas con sus pistas"""
+    sql = """
+        SELECT 
+            e.eid,
+            e.nombre,
+            e.direccion,
+            e.hora_apertura,
+            e.hora_cierre
+        FROM Empresas e
+        ORDER BY e.nombre
+    """
+    empresas = enviarSelect(sql)
+    
+    if isinstance(empresas, tuple):  # error
+        return empresas
+    
+    normalizarHoras(empresas)
+    
+    # para cada empresa, obtener sus pistas
+    for empresa in empresas:
+        sql_pistas = """
+            SELECT 
+                pid,
+                tipo,
+                indoor
+            FROM Pistas 
+            WHERE empresa = %s
+        """
+        pistas = enviarSelect(sql_pistas, empresa['eid'])
+        if not isinstance(pistas, tuple):
+            empresa['pistas'] = pistas
+        else:
+            empresa['pistas'] = []
+    
+    return flask.jsonify(empresas)
 
 ##* Ejecutar la app *###
 if __name__ == '__main__':
