@@ -218,7 +218,7 @@ def end_registro():
         (udni, hashContrasena(contrasena), nombre, apellidos))
     return {"message": "Usuario creado"}, 201
 
-@app.route('/reservas', methods=['GET'])
+@app.route('/reservas', methods=['POST'])
 def end_ver_reservas():
     datos = flask.request.get_json()
     sql = """SELECT 
