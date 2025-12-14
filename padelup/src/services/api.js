@@ -58,9 +58,12 @@ export const getEmpresa = (nombre, fecha = null) => {
 // Parámetro: udni (identificador del usuario)
 // Retorna: array de reservas del usuario con toda la información
 export const getReservas = (udni) => {
-    return api.get('/reservas', { 
-        headers: { 'Content-Type': 'application/json' },
-        data: { udni }
+    // Enviar udni en el body como JSON string para que Flask lo lea con get_json()
+    return api.request({
+        method: 'GET',
+        url: '/reservas',
+        data: { udni },
+        headers: { 'Content-Type': 'application/json' }
     });
 };
 

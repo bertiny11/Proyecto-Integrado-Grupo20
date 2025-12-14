@@ -182,9 +182,7 @@ def end_login():
             "udni": usuario.get("udni"),
             "nombre": usuario.get("nombre"),
             "apellidos": usuario.get("apellidos"),
-            "monedero": usuario.get("monedero"),
-            "valoracion": usuario.get("valoracion"),
-            "nivel_de_juego": usuario.get("nivel_de_juego")
+            "monedero": usuario.get("monedero")
         }
     }, 200
 
@@ -368,9 +366,7 @@ def end_empresas_cercanas():
 
     return flask.jsonify(filas)
 
-
-#estos son los 2 nuevos
-
+# Hechas por el equipo de front
 @app.route('/empresa/<string:nombre>', methods=['GET'])
 def end_obtenerEmpresa(nombre):
     """Obtiene una empresa por nombre con sus pistas y opcionalmente disponibilidad"""
