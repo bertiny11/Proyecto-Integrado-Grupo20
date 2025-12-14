@@ -64,5 +64,12 @@ export const getReservas = (udni) => {
     });
 };
 
+// Actualiza el monedero del usuario sumando o restando una cantidad
+// Parámetro: payload { udni, cantidad } - cantidad puede ser negativa para restar
+// Retorna: nuevo saldo del monedero
+export const actualizarMonedero = (payload) => {
+    return api.post('/actualizarmonedero', payload);
+};
+
 
 export default api;

@@ -7,7 +7,7 @@ import { format, addDays, subDays } from 'date-fns';
 import '../styles/Home.css';
 import '../styles/Dashboard.css';
 import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
-import { getEmpresas, getEmpresa, getReservas } from '../services/api';
+import { getEmpresas, getEmpresa, getReservas, actualizarMonedero } from '../services/api';
 
 registerLocale('es', es);
 
@@ -410,6 +410,60 @@ function Dashboard({ onNavigate }) {
    */
   const handleClosePopover = () => {
     setSelectedSlot(null);
+  };
+
+  /* 
+   manejador para confirmar la reserva y actualizar el monedero
+   resta el precio del monedero del usuario sin crear la reserva en BD
+   */
+  const handleContinueBooking = async () => {
+    if (!selectedSlot || !currentUser) {
+      alert('Debes iniciar sesión para hacer una reserva');
+      return;
+    }
+
+    const selectedOption = selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration);
+    const precio = selectedOption.price;
+    
+    // Verificar saldo suficiente
+    if (currentUser.monedero < precio) {
+      alert('Saldo insuficiente en el monedero');
+      return;
+    }
+
+    try {
+      // Actualizar monedero (restar el precio con valor negativo)
+      const response = await actualizarMonedero({
+        udni: currentUser.udni,
+        cantidad: -precio
+      });
+      
+      // Actualizar el monedero del usuario en el estado
+      const nuevoSaldo = response.data[0].monedero;
+      setCurrentUser(prev => ({
+        ...prev,
+        monedero: nuevoSaldo
+      }));
+
+      // Actualizar también en localStorage
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        user.monedero = nuevoSaldo;
+        localStorage.setItem('user', JSON.stringify(user));
+      }
+
+      alert(`¡Pago realizado! Nuevo saldo: ${parseFloat(nuevoSaldo).toFixed(2)}€`);
+      setSelectedSlot(null);
+      
+    } catch (error) {
+      console.error('Error al actualizar monedero:', error);
+      if (error.response?.data?.error) {
+        alert(`Error: ${error.response.data.error}`);
+      } else {
+        alert('Error al procesar el pago. Por favor, intenta de nuevo.');
+      }
+    }
   };
 
   /* 
@@ -1563,7 +1617,7 @@ function Dashboard({ onNavigate }) {
                                         ))}
                                       </div>
                                       
-                                      <button className="popover-continue-btn">
+                                      <button className="popover-continue-btn" onClick={handleContinueBooking}>
                                         Continuar - {selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price.toFixed(2).replace('.', ',')} €
                                       </button>
                                       
@@ -1592,7 +1646,7 @@ function Dashboard({ onNavigate }) {
                                         ))}
                                       </div>
                                       
-                                      <button className="popover-continue-btn">
+                                      <button className="popover-continue-btn" onClick={handleContinueBooking}>
                                         Continuar - {selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price.toFixed(2).replace('.', ',')} €
                                       </button>
                                       
