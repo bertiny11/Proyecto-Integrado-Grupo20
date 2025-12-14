@@ -7,7 +7,7 @@ import { format, addDays, subDays } from 'date-fns';
 import '../styles/Home.css';
 import '../styles/Dashboard.css';
 import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
-import { getEmpresas, getEmpresa } from '../services/api';
+import { getEmpresas, getEmpresa, getReservas } from '../services/api';
 
 registerLocale('es', es);
 
@@ -122,8 +122,10 @@ function Dashboard({ onNavigate }) {
    */
   
   const [showDropdown, setShowDropdown] = useState(false);
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details' | 'profile'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details' | 'profile' | 'my-bookings'
   const [selectedClub, setSelectedClub] = useState(null);
+  const [userBookings, setUserBookings] = useState([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [bookingDate, setBookingDate] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario
@@ -1053,7 +1055,23 @@ function Dashboard({ onNavigate }) {
                 </ul>
               )}
             </li>
-            <li className="nav-item" onClick={() => setView('club-search')}>Reserva</li>
+            <li className="nav-item" onClick={() => setView('club-search')}>Buscar Pista</li>
+            <li className="nav-item" onClick={() => {
+              setView('my-bookings');
+              if (currentUser?.udni) {
+                setLoadingBookings(true);
+                getReservas(currentUser.udni)
+                  .then(response => {
+                    setUserBookings(response.data);
+                    setLoadingBookings(false);
+                  })
+                  .catch(error => {
+                    console.error('Error al cargar reservas:', error);
+                    setUserBookings([]);
+                    setLoadingBookings(false);
+                  });
+              }
+            }}>Mis Reservas</li>
             <li className="nav-item">Partidos</li>
           </ul>
         </div>
@@ -1119,8 +1137,44 @@ function Dashboard({ onNavigate }) {
             </section>
           </>
         ) : view === 'profile' ? (
-            <section className="profile-section fade-in" style={{padding: '2rem', maxWidth: '800px', margin: '0 auto'}}>
-                <h2 className="section-title" style={{marginBottom: '2rem'}}>Mi Perfil</h2>
+            <>
+                <button 
+                    onClick={() => setView('dashboard')}
+                    style={{
+                        position: 'fixed',
+                        top: '100px',
+                        left: '2rem',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '1rem',
+                        color: '#666',
+                        cursor: 'pointer',
+                        padding: '0.75rem 1.25rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: '500',
+                        transition: 'all 0.2s',
+                        zIndex: 1000,
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(10px)'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#000';
+                        e.currentTarget.style.borderColor = '#000';
+                        e.currentTarget.style.transform = 'translateX(-5px)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#666';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                >
+                    ← Volver
+                </button>
+                <section className="profile-section" style={{padding: '2rem', maxWidth: '800px', margin: '0 auto'}}>
+                    <h2 className="section-title" style={{marginBottom: '2rem'}}>Mi Perfil</h2>
                 
                 {currentUser ? (
                     <div className="profile-card" style={{
@@ -1210,6 +1264,193 @@ function Dashboard({ onNavigate }) {
                     </div>
                 )}
             </section>
+            </>
+        ) : view === 'my-bookings' ? (
+            <>
+                <button 
+                    onClick={() => setView('dashboard')}
+                    style={{
+                        position: 'fixed',
+                        top: '100px',
+                        left: '2rem',
+                        background: 'rgba(255, 255, 255, 0.95)',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '12px',
+                        fontSize: '1rem',
+                        color: '#666',
+                        cursor: 'pointer',
+                        padding: '0.75rem 1.25rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: '500',
+                        transition: 'all 0.2s',
+                        zIndex: 1000,
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                        backdropFilter: 'blur(10px)'
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#000';
+                        e.currentTarget.style.borderColor = '#000';
+                        e.currentTarget.style.transform = 'translateX(-5px)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#666';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                    }}
+                >
+                    ← Volver
+                </button>
+                <section className="bookings-section" style={{padding: '2rem', maxWidth: '1200px', margin: '0 auto'}}>
+                    <h2 className="section-title" style={{marginBottom: '2rem'}}>Mis Reservas</h2>
+                    
+                    {loadingBookings ? (
+                        <div style={{textAlign: 'center', padding: '3rem'}}>
+                            <p>Cargando reservas...</p>
+                        </div>
+                    ) : userBookings.length === 0 ? (
+                        <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '16px'}}>
+                            <p style={{fontSize: '1.1rem', color: '#666'}}>No tienes reservas aún</p>
+                            <button 
+                                onClick={() => setView('club-search')}
+                                style={{
+                                    marginTop: '1.5rem',
+                                    padding: '0.75rem 1.5rem',
+                                    backgroundColor: '#000',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    fontWeight: '500',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Buscar Pistas
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{display: 'grid', gap: '1.5rem'}}>
+                            {userBookings.map((booking, index) => (
+                                <div key={index} style={{
+                                    backgroundColor: 'white',
+                                    borderRadius: '16px',
+                                    padding: '1.5rem',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr auto',
+                                    gap: '1.5rem',
+                                    alignItems: 'center'
+                                }}>
+                                    {/* Fecha y hora */}
+                                    <div style={{
+                                        backgroundColor: '#f9fafb',
+                                        borderRadius: '12px',
+                                        padding: '1rem',
+                                        textAlign: 'center',
+                                        minWidth: '100px'
+                                    }}>
+                                        <div style={{fontSize: '1.5rem', fontWeight: '700', color: '#111'}}>
+                                            {new Date(booking.hora_inicio).getDate()}
+                                        </div>
+                                        <div style={{fontSize: '0.875rem', color: '#666', textTransform: 'uppercase'}}>
+                                            {new Date(booking.hora_inicio).toLocaleDateString('es-ES', { month: 'short' })}
+                                        </div>
+                                        <div style={{fontSize: '0.875rem', color: '#666', marginTop: '0.5rem'}}>
+                                            {booking.hora_inicio}
+                                        </div>
+                                    </div>
+
+                                    {/* Información */}
+                                    <div>
+                                        <h3 style={{fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem'}}>
+                                            {booking.empresa}
+                                        </h3>
+                                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#666'}}>
+                                            <span>⏱️ {booking.duracion} min</span>
+                                            <span>🎾 Nivel: {booking.nivel_de_juego || 'N/A'}</span>
+                                            <span>👥 Tipo: {booking.tipo}</span>
+                                            {booking.huecos_libres > 0 && (
+                                                <span>📍 {booking.huecos_libres} huecos libres</span>
+                                            )}
+                                        </div>
+                                        <div style={{marginTop: '0.75rem'}}>
+                                            <span style={{
+                                                display: 'inline-block',
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '6px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '600',
+                                                backgroundColor: booking.estado === 'Confirmada' ? '#d1fae5' : '#fef3c7',
+                                                color: booking.estado === 'Confirmada' ? '#065f46' : '#92400e'
+                                            }}>
+                                                {booking.estado}
+                                            </span>
+                                            {booking.es_creador === 1 && (
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    marginLeft: '0.5rem',
+                                                    padding: '0.25rem 0.75rem',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: '#dbeafe',
+                                                    color: '#1e40af'
+                                                }}>
+                                                    Creador
+                                                </span>
+                                            )}
+                                            {booking.pagado === 1 ? (
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    marginLeft: '0.5rem',
+                                                    padding: '0.25rem 0.75rem',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: '#d1fae5',
+                                                    color: '#065f46'
+                                                }}>
+                                                    ✓ Pagado
+                                                </span>
+                                            ) : (
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    marginLeft: '0.5rem',
+                                                    padding: '0.25rem 0.75rem',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: '#fee2e2',
+                                                    color: '#991b1b'
+                                                }}>
+                                                    Pendiente pago
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Acciones */}
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                                        <button style={{
+                                            padding: '0.5rem 1rem',
+                                            backgroundColor: '#f3f4f6',
+                                            border: '1px solid #e5e7eb',
+                                            borderRadius: '8px',
+                                            fontSize: '0.875rem',
+                                            fontWeight: '500',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            Ver detalles
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </>
         ) : view === 'club-details' && selectedClub ? (
           <section className="club-details-section fade-in">
             {/* Header with Image */}
@@ -1220,6 +1461,9 @@ function Dashboard({ onNavigate }) {
             </div>
 
             <div className="club-details-container">
+              {/* Back Button */}
+              <button className="btn-back" onClick={() => setView('club-search')}>← Volver</button>
+              
               {/* Breadcrumbs */}
               <div className="breadcrumbs">
                 <span onClick={() => setView('dashboard')}>Home</span> 

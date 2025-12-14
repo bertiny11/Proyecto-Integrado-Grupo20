@@ -54,5 +54,15 @@ export const getEmpresa = (nombre, fecha = null) => {
     return api.get(`/empresa/${encodeURIComponent(nombre)}`, { params });
 };
 
+// Obtiene las reservas del usuario
+// Parámetro: udni (identificador del usuario)
+// Retorna: array de reservas del usuario con toda la información
+export const getReservas = (udni) => {
+    return api.get('/reservas', { 
+        headers: { 'Content-Type': 'application/json' },
+        data: { udni }
+    });
+};
+
 
 export default api;
