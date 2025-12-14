@@ -88,15 +88,28 @@ function Auth({ onNavigate }) {
         setLoading(true);
         try {
             // Enviamos el objeto completo para registro
-            const { data } = await registerUser({
+            await registerUser({
                 nombre: formData.nombre,
                 apellidos: formData.apellidos,
                 udni: formData.udni,
                 password: formData.password
             });
             
+            // Limpiar localStorage antes de hacer login
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Después de registrar, hacer login automáticamente
+            const loginResponse = await loginUser({
+                udni: formData.udni,
+                password: formData.password
+            });
+            
+            // Guardar token y usuario nuevo
+            localStorage.setItem('token', loginResponse.data.token);
+            localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+            
             alert('¡Registro exitoso!');
-            // Cambiamos a login automáticamente
             onNavigate('dashboard');
 
             

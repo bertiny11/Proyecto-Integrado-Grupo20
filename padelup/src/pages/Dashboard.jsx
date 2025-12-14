@@ -153,14 +153,28 @@ function Dashboard({ onNavigate }) {
 
   // Cargar datos del usuario desde localStorage
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-        try {
-            setCurrentUser(JSON.parse(userStr));
-        } catch (e) {
-            console.error("Error leyendo usuario", e);
-        }
-    }
+    const loadUser = () => {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+          try {
+              const user = JSON.parse(userStr);
+              setCurrentUser(user);
+              console.log('Usuario cargado:', user);
+          } catch (e) {
+              console.error("Error leyendo usuario", e);
+          }
+      }
+    };
+    
+    // Cargar usuario al montar
+    loadUser();
+    
+    // Escuchar cambios en localStorage (para cuando se registra/loguea)
+    window.addEventListener('storage', loadUser);
+    
+    return () => {
+      window.removeEventListener('storage', loadUser);
+    };
   }, []);
 
   // Función para cerrar sesión

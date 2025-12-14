@@ -24,7 +24,7 @@ function App() {
     <div className={`page-wrapper ${isTransitioning ? 'page-fade-out' : 'page-fade-in'}`}>
       {currentPage === 'home' && <Home onNavigate={navigateTo} />}
       {currentPage === 'auth' && <Auth onNavigate={navigateTo} initialMode={authMode} />}
-      {currentPage === 'dashboard' && <Dashboard onNavigate={navigateTo} />}
+      {currentPage === 'dashboard' && <Dashboard key={Date.now()} onNavigate={navigateTo} />}
       {currentPage === 'register' && <Register onNavigate={navigateTo} />}
     </div>
   )
