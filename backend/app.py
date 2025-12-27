@@ -181,7 +181,7 @@ def end_login():
         "user": {
             "udni": usuario.get("udni"),
             "nombre": usuario.get("nombre"),
-            "apellidos": usuario.get("apellidos"),
+            "apellidos": usuario.get("apellidos"), # deberia funcionar solo con udni
             "monedero": usuario.get("monedero")
         }
     }, 200
@@ -366,6 +366,26 @@ def end_empresas_cercanas():
 
     return flask.jsonify(filas)
 
+@app.route('/reservar', methods=['POST'])
+def end_reservar():
+    datos = flask.request.get_json()
+
+    # Si no esta ocupada la pista en esa fecha
+    sql = """SELECT 1 FROM Reserva WHERE pista = %s AND hora_inicio = %s;"""
+    filas = enviarSelect(sql, (datos.get("pista"), datos.get("hora_inicio")))
+
+    if filas:
+        return {"error": "La pista ya está reservada a esa hora."}, 409
+
+    # Creamos la reserva
+    sql = """INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo)
+            VALUES (%s, %s, %s, %s, %s);"""
+    param = (datos.get("pista"), datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
+            datos.get("tipo"))
+
+    resultado = enviarCommit(sql, param)
+    return flask.jsonify(resultado)
+
 # Hechas por el equipo de front
 @app.route('/empresa/<string:nombre>', methods=['GET'])
 def end_obtenerEmpresa(nombre):
@@ -431,7 +451,6 @@ def end_obtenerEmpresa(nombre):
         empresa['pistas'] = pistas
     
     return flask.jsonify(empresa)
-
 
 @app.route('/empresas', methods=['GET'])
 def end_obtenerEmpresas():
