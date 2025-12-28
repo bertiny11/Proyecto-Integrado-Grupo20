@@ -15,6 +15,20 @@ DB_HOST = os.getenv("MYSQL_HOST")
 DB_PORT = int(os.getenv("MYSQL_PORT"))
 HASH_KEY = os.getenv("HASH_KEY").encode()
 
+precios = { # define los precios segun duracion
+    60: 5.0,
+    90: 7.0,
+    120: 9.0
+}
+
+mapa = {    # define los niveles de juego permitidos
+    'A': ['A', 'B'],
+    'B': ['A', 'B', 'C'],
+    'C': ['B', 'C', 'D'],
+    'D': ['C', 'D', 'F'],
+    'F': ['D', 'F']
+    }
+
 # Configurar Flask
 app = flask.Flask(__name__)
 CORS(app)
@@ -155,7 +169,7 @@ def end_login():
     if not all([udni, contrasena]):
         return {"error": "Faltan datos"}, 400
 
-    filas = enviarSelect("SELECT udni, nombre, apellidos, contrasena, monedero FROM Usuarios WHERE udni = %s", udni)
+    filas = enviarSelect("SELECT udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion, cp FROM Usuarios WHERE udni = %s", udni)
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -182,7 +196,10 @@ def end_login():
             "udni": usuario.get("udni"),
             "nombre": usuario.get("nombre"),
             "apellidos": usuario.get("apellidos"), # deberia funcionar solo con udni
-            "monedero": usuario.get("monedero")
+            "monedero": usuario.get("monedero"),
+            "nivel_de_juego": usuario.get("nivel_de_juego"),
+            "valoracion": usuario.get("valoracion"),
+            "cp": usuario.get("cp")
         }
     }, 200
 
@@ -343,7 +360,7 @@ def end_empresas_cercanas():
     try:
         usercp = int(enviarSelect(sql, datos.get("udni"))[0]['cp']) # obtenemos el cp del usuario
     except Exception:
-        return {"error": "Usuario no encontrado."}, 404
+        usercp = 0 # si no tiene cp, ponemos 0 para default
 
     sql = "SELECT nombre, direccion FROM empresas;" # obtenemos las direcciones de las empresas
     filas = enviarSelect(sql)
@@ -369,22 +386,281 @@ def end_empresas_cercanas():
 @app.route('/reservar', methods=['POST'])
 def end_reservar():
     datos = flask.request.get_json()
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                # Comprobamos que el usuario pueda crear reservas en el nivel solicitado
+                cursor.execute("""
+                    SELECT nivel_de_juego FROM Usuarios WHERE udni = %s;""", (
+                    
+                    datos["udni"],))
+                fila = cursor.fetchone() # guardamos la fila
+                
+                if not fila:
+                    conexion.rollback()
+                    return {"error": "Usuario no encontrado"}, 404
+                
+                niveles_permitidos = mapa.get(fila["nivel_de_juego"])
+                if datos["nivel_de_juego"] not in niveles_permitidos:
+                    conexion.rollback()
+                    return {"error": "Nivel de juego no permitido para este usuario"}, 400
 
-    # Si no esta ocupada la pista en esa fecha
-    sql = """SELECT 1 FROM Reserva WHERE pista = %s AND hora_inicio = %s;"""
-    filas = enviarSelect(sql, (datos.get("pista"), datos.get("hora_inicio")))
+                # Comprobamos que la pista este libre en el horario solicitado
+                cursor.execute("""
+                    SELECT 1 FROM Reserva
+                    WHERE pista = %s
+                    AND hora_inicio < DATE_ADD(%s, INTERVAL %s MINUTE)
+                    AND DATE_ADD(hora_inicio, INTERVAL duracion MINUTE) > %s;""", (
+                    
+                    int(datos["pista"]),
+                    datos["hora_inicio"],
+                    int(datos["duracion"]),
+                    datos["hora_inicio"]))
 
+                if cursor.fetchone(): # si hay alguna fila, la pista está ocupada
+                    conexion.rollback() # deshacemos cambios
+                    return {"error": "La pista ya está reservada"}, 409
+
+                # Comprobamos que el usuario tenga dinero suficiente
+                cursor.execute(
+                    "SELECT monedero FROM Usuarios WHERE udni = %s",
+                    (datos["udni"]))
+                fila = cursor.fetchone() # guardamos la fila
+
+                if not fila:
+                    conexion.rollback()
+                    return {"error": "Usuario no encontrado"}, 404
+
+                if datos["tipo"] == "Completa": # si es completa, el precio se paga completo
+                    coste = 4 * precios.get(int(datos["duracion"]))
+                else:
+                    coste = precios.get(int(datos["duracion"]))
+
+                if fila["monedero"] < coste:
+                    conexion.rollback()
+                    return {"error": "Saldo insuficiente"}, 400
+
+                # Creamos la reserva
+                cursor.execute("""
+                    INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo)
+                    VALUES (%s, %s, %s, %s, %s);""", (
+                    
+                    int(datos["pista"]),
+                    datos["hora_inicio"],
+                    int(datos["duracion"]),
+                    datos["nivel_de_juego"],
+                    datos["tipo"]))
+                
+                rid = cursor.lastrowid  # obtenemos el id de la reserva creada
+
+                # Restamos monedero
+                cursor.execute("""UPDATE Usuarios SET monedero = monedero - %s 
+                                WHERE udni = %s;""", (
+                                coste, datos["udni"]))
+
+                # Creamos el participante creador
+                cursor.execute("""
+                    INSERT INTO ParticipantesReserva (reserva, usuario, es_creador, pagado)
+                    VALUES (%s, (SELECT uid FROM Usuarios WHERE udni = %s), 1, 1);""", (
+                    
+                    rid,
+                    datos["udni"]))
+
+                conexion.commit() # confirmamos los cambios
+                return {"message": "Reserva creada"}, 201
+    except Exception:
+        return {"error": "Error interno del servidor"}, 500
+
+@app.route('/reservasnivel', methods=['GET'])
+def end_reservas_nivel():
+    datos = flask.request.get_json()
+
+    niveles = mapa.get(datos.get("nivel_de_juego"))
+    
+    if not niveles:
+        return {"Error": "Nivel de juego no válido"}, 400
+    
+    nivelesSQL = ', '.join(['%s'] * len(niveles)) # pinta %s segun el nº de niveles
+    
+    sql = f"""SELECT 
+                r.rid,
+                p.tipo,
+                r.hora_inicio,
+                r.duracion,
+                r.nivel_de_juego,
+                r.huecos_libres,
+                e.nombre AS empresa
+            FROM Reserva r
+            JOIN Pistas p ON r.pista = p.pid
+            JOIN Empresas e ON p.empresa = e.eid
+            WHERE r.hora_inicio > DATE_ADD(NOW(), INTERVAL 10 MINUTE)
+            AND r.tipo = 'Libre'
+            AND r.estado = 'Pendiente'
+            AND r.huecos_libres > 0
+            AND r.nivel_de_juego IN ({nivelesSQL})
+            ORDER BY r.hora_inicio ASC;
+            """
+
+    filas = enviarSelect(sql, niveles)
+
+    if not filas:
+        return {"Error": "No existen reservas para este nivel de juego"}, 404
+    
+    normalizarHoras(filas)
+    return flask.jsonify(filas)
+
+@app.route('/enviarpeticion', methods=['POST'])
+def end_enviar_peticion():
+    datos = flask.request.get_json()
+
+    # comprobamos que el usuario tenga dinero suficiente
+    sql = """SELECT monedero, nivel_de_juego FROM Usuarios WHERE udni = %s;"""
+    filas = enviarSelect(sql, datos.get("udni"))
+    
+    if not filas:
+        return {"error": "usuario no encontrado."}, 404
+    
+    sql = """SELECT duracion FROM Reserva WHERE rid = %s;""" # obtenemos la duracion para saber el precio
+    filas_duracion = enviarSelect(sql, datos.get("rid"))[0]['duracion']
+    
+    if float(filas[0]['monedero']) < precios.get(filas_duracion):
+        return {"error": "saldo insuficiente. Se requieren al menos " + str(precios.get(filas_duracion)) + "€ para enviar una petición."}, 400
+
+    # Comprobamos que el usuario tenga nivel de juego valido
+    niveles = mapa.get(filas[0]['nivel_de_juego'])
+    if not niveles:
+        return {"Error": "Nivel de juego no válido"}, 400
+    
+    nivelesSQL = ', '.join(['%s'] * len(niveles)) # pinta %s segun el nº de niveles
+    sql = f"""SELECT r.rid
+            FROM Reserva r
+            JOIN Pistas p ON r.pista = p.pid
+            WHERE r.rid = %s
+            AND r.nivel_de_juego IN ({nivelesSQL});"""
+    filas = enviarSelect(sql, [datos.get("rid")] + niveles)
+    if not filas:
+        return {"Error": "El usuario no tiene el nivel de juego requerido para esta reserva."}, 400
+
+    # Comprobamos que no exista ya una invitacion para esa reserva y usuario
+    sql = """SELECT 1 FROM InvitacionesReserva
+            WHERE reserva = %s AND usuario = (SELECT uid FROM Usuarios WHERE udni = %s);"""
+    filas = enviarSelect(sql, (datos.get("rid"), datos.get("udni")))
     if filas:
-        return {"error": "La pista ya está reservada a esa hora."}, 409
+        return {"error": "Ya existe una invitación para este usuario y reserva."}, 409
 
-    # Creamos la reserva
-    sql = """INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo)
-            VALUES (%s, %s, %s, %s, %s);"""
-    param = (datos.get("pista"), datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
-            datos.get("tipo"))
+    # Comprobamos que el usuario no sea ya participante de la reserva
+    sql = """SELECT 1 FROM ParticipantesReserva
+            WHERE reserva = %s AND usuario = (SELECT uid FROM Usuarios WHERE udni = %s);"""
+    filas = enviarSelect(sql, (datos.get("rid"), datos.get("udni")))
+    if filas:
+        return {"error": "El usuario ya es participante de esta reserva."}, 409
+
+    # Creamos la invitacion
+    sql = """INSERT INTO InvitacionesReserva (reserva, usuario)
+            VALUES (%s, (SELECT uid FROM Usuarios WHERE udni = %s));"""
+    param = (datos.get("rid"), datos.get("udni"))
 
     resultado = enviarCommit(sql, param)
     return flask.jsonify(resultado)
+
+@app.route('/aceptarpeticion', methods=['POST'])
+def end_aceptar_peticion():
+    datos = flask.request.get_json()
+
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                # Comprobamos que haya huecos libres en la reserva
+                cursor.execute("""SELECT huecos_libres FROM Reserva WHERE rid = (SELECT reserva FROM InvitacionesReserva WHERE irid = %s);""", 
+                                (datos.get("irid")))
+                huecos_libres = cursor.fetchall()
+                if not huecos_libres:   # reserva no encontrada
+                    return {"error": "reserva no encontrada."}, 404
+                
+                if huecos_libres[0]['huecos_libres'] <= 0: # si no hay huecos libres, eliminamos la invitacion
+                    cursor.execute("""DELETE FROM InvitacionesReserva WHERE irid = %s;""",
+                                    (datos.get("irid"),))
+                    return {"error": "No hay huecos libres en la reserva."}, 400
+
+                # comprobaremos que el usuario tenga dinero suficiente
+                cursor.execute("""SELECT monedero FROM Usuarios WHERE uid = (SELECT usuario FROM InvitacionesReserva WHERE irid = %s);""", 
+                                (datos.get("irid")))
+                monedero = cursor.fetchall()
+                if not monedero:   # usuario no encontrado
+                    return {"error": "usuario no encontrado."}, 404
+                
+                cursor.execute("""SELECT duracion FROM Reserva WHERE rid = (SELECT reserva FROM InvitacionesReserva WHERE irid = %s);""", # obtenemos duracion para saber precio
+                                (datos.get("irid")))
+                #filas_duracion = enviarSelect(sql, datos.get("rid"))[0]['duracion']
+                coste = precios.get(cursor.fetchall()[0]['duracion'])
+                if float(monedero[0]['monedero']) < coste:
+                    return {"error": "saldo insuficiente. Se requieren al menos " + str(coste) + "€ para aceptar la petición."}, 400
+
+                # restamos al monedero
+                cursor.execute("""UPDATE Usuarios SET monedero = monedero - %s WHERE uid = (SELECT usuario FROM InvitacionesReserva WHERE irid = %s);""", 
+                                (coste, datos.get("irid")))
+
+                # Actualizamos la invitacion como aceptada
+                # primero creamos un participante en la reserva
+                cursor.execute("""INSERT INTO ParticipantesReserva (reserva, usuario, es_creador, pagado)
+                                VALUES ((SELECT reserva FROM InvitacionesReserva WHERE irid = %s), (SELECT uid FROM Usuarios WHERE uid = (SELECT usuario FROM InvitacionesReserva WHERE irid = %s)), 0, 1);""",
+                                (datos.get("irid"), datos.get("irid")))
+                # luego actualizamos los huecos libres
+                cursor.execute("""UPDATE Reserva SET huecos_libres = huecos_libres - 1  WHERE rid = (SELECT reserva FROM InvitacionesReserva WHERE irid = %s);""",
+                                (datos.get("irid"),))
+                # eliminamos la invitacion
+                cursor.execute("""DELETE FROM InvitacionesReserva WHERE irid = %s;""",
+                                (datos.get("irid"),))
+
+                conexion.commit() # confirmamos los cambios
+                return {"message": "Petición aceptada"}, 200
+    except Exception:
+        return {"error": "Error interno del servidor"}, 500
+
+@app.route('/rechazarpeticion', methods=['POST'])
+def end_rechazar_peticion():
+    datos = flask.request.get_json()
+
+    sql = """DELETE FROM InvitacionesReserva WHERE irid = %s"""
+    param = (datos.get("irid"))
+    enviarCommit(sql, param)
+
+    return {"message": "Petición rechazada"}, 200
+
+@app.route('/verpeticiones', methods=['GET'])
+def end_ver_peticiones():
+    datos = flask.request.get_json()
+
+    sql = """SELECT 
+                ir.irid,
+                u.nombre,
+                u.apellidos,
+                p.tipo,
+                r.hora_inicio AS "hora inicio",
+                r.duracion,
+                r.nivel_de_juego AS "nivel de juego",
+                r.huecos_libres AS "huecos libres",
+                e.nombre AS empresa,
+                e.direccion AS direccion
+            FROM InvitacionesReserva ir
+            JOIN Reserva r ON ir.reserva = r.rid
+            JOIN Pistas p ON r.pista = p.pid
+            JOIN Empresas e ON p.empresa = e.eid
+            JOIN Usuarios u ON ir.usuario = u.uid
+            JOIN ParticipantesReserva pr ON pr.reserva = r.rid
+            JOIN Usuarios uc ON pr.usuario = uc.uid
+            WHERE uc.udni = %s
+            AND pr.es_creador = 1
+            ORDER BY r.hora_inicio DESC;
+            """
+
+    filas = enviarSelect(sql, [datos.get("udni")])
+
+    if not filas:
+        return {"Error": "No existen peticiones para este usuario"}, 404
+    
+    #normalizarHoras(filas)
+    return flask.jsonify(filas)
 
 # Hechas por el equipo de front
 @app.route('/empresa/<string:nombre>', methods=['GET'])
