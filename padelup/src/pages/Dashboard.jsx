@@ -126,6 +126,7 @@ function Dashboard({ onNavigate }) {
   const [selectedClub, setSelectedClub] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ show: false, booking: null });
   const [showFilters, setShowFilters] = useState(false);
   const [bookingDate, setBookingDate] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario
@@ -378,6 +379,7 @@ function Dashboard({ onNavigate }) {
         clickedTime: time,
         startTime: actualStartTime,
         selectedDuration: defaultOption.duration,
+        selectedType: 'Libre', // Tipo por defecto
         options: options,
         forwardMinutes: availableMinutes - 30,
         backwardMinutes: backwardsMinutes
@@ -427,6 +429,17 @@ function Dashboard({ onNavigate }) {
   };
 
   /* 
+   manejador de selección de tipo de reserva
+   actualiza el tipo (Libre o Completa) y recalcula el precio
+   */
+  const handleTypeSelect = (type) => {
+    setSelectedSlot(prev => ({
+      ...prev,
+      selectedType: type
+    }));
+  };
+
+  /* 
    manejador para confirmar la reserva
    crea una reserva completa con el endpoint /reservar
    incluye verificación de monedero, creación de reserva y actualización de datos
@@ -438,7 +451,12 @@ function Dashboard({ onNavigate }) {
     }
 
     const selectedOption = selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration);
-    const precio = selectedOption.price;
+    let precio = selectedOption.price;
+    
+    // Si es reserva completa, el precio se divide entre 4 jugadores (cada uno paga su parte)
+    if (selectedSlot.selectedType === 'Completa') {
+      precio = precio / 4;
+    }
     
     // Verificar saldo suficiente
     if (currentUser.monedero < precio) {
@@ -466,14 +484,25 @@ function Dashboard({ onNavigate }) {
         pista: court.pid.toString(),
         hora_inicio: hora_inicio,
         duracion: selectedSlot.selectedDuration.toString(),
-        nivel_de_juego: currentUser.nivel_de_juego || 'A',
-        tipo: 'Libre'
+        nivel_de_juego: currentUser.nivel_de_juego && ['A', 'B', 'C', 'D', 'F'].includes(currentUser.nivel_de_juego) 
+          ? currentUser.nivel_de_juego 
+          : 'B', // Si no tiene nivel válido, usar B por defecto
+        tipo: selectedSlot.selectedType // Usar el tipo seleccionado por el usuario
       };
+
+      console.log('Enviando reserva:', reservaData);
+      console.log('Fecha reserva:', bookingDate);
+      console.log('Slot seleccionado:', selectedSlot);
 
       // Crear la reserva
       const response = await crearReserva(reservaData);
       
-      if (response.data.success) {
+      console.log('Respuesta del backend:', response);
+      console.log('Response.data:', response.data);
+      console.log('Response.status:', response.status);
+      
+      // Considerar exitoso si status es 200 o 201, o si success es true
+      if (response.status === 201 || response.status === 200 || response.data.success) {
         // Actualizar el monedero del usuario en el estado
         const nuevoSaldo = parseFloat(currentUser.monedero) - precio;
         setCurrentUser(prev => ({
@@ -492,15 +521,20 @@ function Dashboard({ onNavigate }) {
         alert(`¡Reserva creada exitosamente! Nuevo saldo: ${nuevoSaldo.toFixed(2)}€`);
         setSelectedSlot(null);
         
-        // Recargar disponibilidad
-        const nombreEmpresa = selectedClub.name;
-        const fechaStr = format(bookingDate, 'yyyy-MM-dd');
-        const empresaResponse = await getEmpresa(nombreEmpresa, fechaStr);
-        if (empresaResponse.data) {
-          setSelectedClub(prev => ({
-            ...prev,
-            courts: empresaResponse.data.pistas
-          }));
+        // Navegar a Mis Reservas
+        setView('my-bookings');
+        
+        // Cargar las reservas del usuario
+        if (currentUser?.udni) {
+          try {
+            setLoadingBookings(true);
+            const reservasResponse = await getReservas(currentUser.udni);
+            setUserBookings(reservasResponse.data || []);
+          } catch (err) {
+            console.error('Error al cargar reservas:', err);
+          } finally {
+            setLoadingBookings(false);
+          }
         }
       } else {
         alert(`Error: ${response.data.error || 'No se pudo crear la reserva'}`);
@@ -508,11 +542,65 @@ function Dashboard({ onNavigate }) {
       
     } catch (error) {
       console.error('Error al crear reserva:', error);
+      
+      // Recargar disponibilidad en caso de error para sincronizar
+      const nombreEmpresa = selectedClub.name;
+      const fechaStr = format(bookingDate, 'yyyy-MM-dd');
+      try {
+        const empresaResponse = await getEmpresa(nombreEmpresa, fechaStr);
+        if (empresaResponse.data) {
+          setSelectedClub(prev => ({
+            ...prev,
+            courts: empresaResponse.data.pistas
+          }));
+        }
+      } catch (reloadError) {
+        console.error('Error al recargar disponibilidad:', reloadError);
+      }
+      
       if (error.response?.data?.error) {
         alert(`Error: ${error.response.data.error}`);
+      } else if (error.response?.status === 409) {
+        alert('Este horario ya ha sido reservado por otro usuario. Por favor, selecciona otro horario.');
       } else {
-        alert('Error al procesar la reserva');
+        alert('Error al procesar la reserva. Por favor, intenta de nuevo.');
       }
+      
+      setSelectedSlot(null);
+    }
+  };
+
+  /* 
+   manejador para eliminar una reserva
+   */
+  const handleDeleteBooking = async () => {
+    if (!deleteModal.booking || !currentUser) return;
+    
+    try {
+      const response = await eliminarReserva(deleteModal.booking.rid, currentUser.udni);
+      
+      if (response.data.success) {
+        alert(`Reserva eliminada. Reembolso: ${response.data.reembolso.toFixed(2)}€`);
+        
+        // Actualizar el saldo del usuario
+        setCurrentUser(prev => ({
+          ...prev,
+          monedero: prev.monedero + response.data.reembolso
+        }));
+        
+        // Recargar las reservas
+        setLoadingBookings(true);
+        const reservasResponse = await getReservas(currentUser.udni);
+        setUserBookings(reservasResponse.data || []);
+        setLoadingBookings(false);
+        
+        setDeleteModal({ show: false, booking: null });
+      } else {
+        alert('Error al eliminar la reserva');
+      }
+    } catch (error) {
+      console.error('Error al eliminar reserva:', error);
+      alert(`Error: ${error.response?.data?.error || 'No se pudo eliminar la reserva'}`);
     }
   };
 
@@ -1477,17 +1565,20 @@ function Dashboard({ onNavigate }) {
 
                                     {/* Acciones */}
                                     <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
-                                        <button style={{
+                                        <button 
+                                            onClick={() => setDeleteModal({ show: true, booking })}
+                                            style={{
                                             padding: '0.5rem 1rem',
-                                            backgroundColor: '#f3f4f6',
-                                            border: '1px solid #e5e7eb',
+                                            backgroundColor: '#fee2e2',
+                                            border: '1px solid #fecaca',
                                             borderRadius: '8px',
                                             fontSize: '0.875rem',
                                             fontWeight: '500',
+                                            color: '#991b1b',
                                             cursor: 'pointer',
                                             transition: 'all 0.2s'
                                         }}>
-                                            Ver detalles
+                                            Eliminar reserva
                                         </button>
                                     </div>
                                 </div>
@@ -1608,8 +1699,26 @@ function Dashboard({ onNavigate }) {
                                         ))}
                                       </div>
                                       
+                                      <div className="popover-type-selector">
+                                        <div className="type-selector-label">Tipo de reserva:</div>
+                                        <div 
+                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Libre')}
+                                        >
+                                          <span>Juego Libre</span>
+                                          <span className="type-description">Pagas la pista completa</span>
+                                        </div>
+                                        <div 
+                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Completa')}
+                                        >
+                                          <span>Reserva Completa</span>
+                                          <span className="type-description">Pagas tu parte (1/4)</span>
+                                        </div>
+                                      </div>
+                                      
                                       <button className="popover-continue-btn" onClick={handleContinueBooking}>
-                                        Continuar - {selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price.toFixed(2).replace('.', ',')} €
+                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Completa' ? 4 : 1)).toFixed(2).replace('.', ',')} €
                                       </button>
                                       
                                       <button className="popover-close-btn" onClick={handleClosePopover}>
@@ -1637,8 +1746,26 @@ function Dashboard({ onNavigate }) {
                                         ))}
                                       </div>
                                       
+                                      <div className="popover-type-selector">
+                                        <div className="type-selector-label">Tipo de reserva:</div>
+                                        <div 
+                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Libre')}
+                                        >
+                                          <span>Juego Libre</span>
+                                          <span className="type-description">Pagas la pista completa</span>
+                                        </div>
+                                        <div 
+                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Completa')}
+                                        >
+                                          <span>Reserva Completa</span>
+                                          <span className="type-description">Pagas tu parte (1/4)</span>
+                                        </div>
+                                      </div>
+                                      
                                       <button className="popover-continue-btn" onClick={handleContinueBooking}>
-                                        Continuar - {selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price.toFixed(2).replace('.', ',')} €
+                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Completa' ? 4 : 1)).toFixed(2).replace('.', ',')} €
                                       </button>
                                       
                                       <button className="popover-close-btn" onClick={handleClosePopover}>
@@ -1942,6 +2069,84 @@ function Dashboard({ onNavigate }) {
           </div>
         </div>
       </footer>
+
+      {/* Modal de confirmación para eliminar reserva */}
+      {deleteModal.show && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '2rem',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>
+              Confirmar eliminación
+            </h3>
+            <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+              ¿Estás seguro de que deseas eliminar esta reserva? El dinero será devuelto a tu monedero.
+            </p>
+            {deleteModal.booking && (
+              <div style={{
+                backgroundColor: '#f9fafb',
+                padding: '1rem',
+                borderRadius: '8px',
+                marginBottom: '1.5rem'
+              }}>
+                <p><strong>Club:</strong> {deleteModal.booking.empresa}</p>
+                <p><strong>Pista:</strong> {deleteModal.booking.tipo}</p>
+                <p><strong>Fecha:</strong> {deleteModal.booking.fecha}</p>
+                <p><strong>Hora:</strong> {deleteModal.booking.hora_inicio}</p>
+                <p><strong>Duración:</strong> {deleteModal.booking.duracion} min</p>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={() => setDeleteModal({ show: false, booking: null })}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteBooking}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

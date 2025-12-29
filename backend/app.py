@@ -766,6 +766,78 @@ def end_obtenerEmpresas():
     
     return flask.jsonify(empresas)
 
+@app.route('/eliminar_reserva', methods=['DELETE'])
+def end_eliminar_reserva():
+    """Elimina una reserva y devuelve el dinero al monedero del usuario"""
+    datos = flask.request.get_json()
+    rid = datos.get("rid")
+    udni = datos.get("udni")
+    
+    if not rid or not udni:
+        return {"error": "Faltan datos requeridos (rid, udni)"}, 400
+    
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                # Verificar que la reserva existe y obtener información
+                cursor.execute("""
+                    SELECT r.rid, r.duracion, r.tipo
+                    FROM Reserva r
+                    JOIN ParticipantesReserva p ON r.rid = p.reserva
+                    JOIN Usuarios u ON p.usuario = u.uid
+                    WHERE r.rid = %s AND u.udni = %s
+                """, (rid, udni))
+                
+                reserva = cursor.fetchone()
+                if not reserva:
+                    return {"error": "Reserva no encontrada o no pertenece al usuario"}, 404
+                
+                duracion = reserva['duracion']
+                tipo = reserva['tipo']
+                precio = precios.get(duracion)
+                
+                # Calcular el reembolso según el tipo
+                if tipo == 'Libre':
+                    reembolso = precio / 4  # El usuario pagó su parte
+                else:  # Completa
+                    reembolso = precio  # El usuario pagó todo
+                
+                # Devolver el dinero al monedero
+                cursor.execute("""
+                    UPDATE Usuarios 
+                    SET monedero = monedero + %s 
+                    WHERE udni = %s
+                """, (reembolso, udni))
+                
+                # Eliminar el participante
+                cursor.execute("""
+                    DELETE FROM ParticipantesReserva 
+                    WHERE reserva = %s AND usuario = (SELECT uid FROM Usuarios WHERE udni = %s)
+                """, (rid, udni))
+                
+                # Verificar si quedan más participantes
+                cursor.execute("SELECT COUNT(*) as count FROM ParticipantesReserva WHERE reserva = %s", (rid,))
+                count = cursor.fetchone()['count']
+                
+                # Si no quedan participantes, eliminar la reserva
+                if count == 0:
+                    cursor.execute("DELETE FROM Reserva WHERE rid = %s", (rid,))
+                else:
+                    # Si quedan participantes y es tipo Libre, incrementar huecos libres
+                    if tipo == 'Libre':
+                        cursor.execute("""
+                            UPDATE Reserva 
+                            SET huecos_libres = huecos_libres + 1 
+                            WHERE rid = %s
+                        """, (rid,))
+                
+                conexion.commit()
+                return {"success": True, "message": "Reserva eliminada correctamente", "reembolso": reembolso}, 200
+                
+    except Exception as e:
+        print(f"Error al eliminar reserva: {str(e)}")
+        return {"error": f"Error al eliminar reserva: {str(e)}"}, 500
+
 ##* Ejecutar la app *###
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

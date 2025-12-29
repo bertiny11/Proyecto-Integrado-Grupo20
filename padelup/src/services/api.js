@@ -123,5 +123,17 @@ export const rechazarPeticion = (payload) => {
     return api.post('/rechazarpeticion', payload);
 };
 
+// Eliminar una reserva
+// Parámetros: rid (ID de la reserva), udni (DNI del usuario)
+// Retorna: confirmación de eliminación y reembolso
+export const eliminarReserva = (rid, udni) => {
+    return api.request({
+        method: 'DELETE',
+        url: '/eliminar_reserva',
+        data: { rid, udni },
+        headers: { 'Content-Type': 'application/json' }
+    });
+};
+
 
 export default api;
