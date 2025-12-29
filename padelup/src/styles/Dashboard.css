@@ -1256,6 +1256,21 @@
   opacity: 0.9;
 }
 
+.half-slot.libre-available {
+  background: #fb923c; /* Orange for free game available */
+  cursor: pointer;
+}
+
+.half-slot.libre-available.hover-highlight {
+  background: #f97316; /* Darker orange on hover */
+  opacity: 0.9;
+}
+
+.half-slot.libre-available.selected-highlight {
+  background: #ea580c; /* Even darker orange for selected */
+  opacity: 0.95;
+}
+
 .half-slot.unavailable {
   background: #e5e7eb;
   cursor: not-allowed;
@@ -1450,6 +1465,10 @@
 .legend-item .box.available {
   background: #fff;
   border: 1px solid #e5e7eb;
+}
+
+.legend-item .box.libre-available {
+  background: #fb923c;
 }
 
 .legend-item .box.unavailable {

@@ -101,12 +101,7 @@ export const enviarPeticion = (payload) => {
 // Parámetro: udni (identificador del usuario)
 // Retorna: array de peticiones pendientes
 export const verPeticiones = (udni) => {
-    return api.request({
-        method: 'GET',
-        url: '/verpeticiones',
-        data: { udni },
-        headers: { 'Content-Type': 'application/json' }
-    });
+    return api.post('/verpeticiones', { udni });
 };
 
 // Aceptar una petición de unión a una reserva

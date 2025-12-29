@@ -122,11 +122,14 @@ function Dashboard({ onNavigate }) {
    */
   
   const [showDropdown, setShowDropdown] = useState(false);
-  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details' | 'profile' | 'my-bookings'
+  const [view, setView] = useState('dashboard'); // 'dashboard' | 'club-search' | 'club-details' | 'profile' | 'my-bookings' | 'peticiones'
   const [selectedClub, setSelectedClub] = useState(null);
   const [userBookings, setUserBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ show: false, booking: null });
+  const [joinModal, setJoinModal] = useState({ show: false, reserva: null });
+  const [peticiones, setPeticiones] = useState([]);
+  const [loadingPeticiones, setLoadingPeticiones] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [bookingDate, setBookingDate] = useState(new Date());
   const [currentUser, setCurrentUser] = useState(null); // Estado para el usuario
@@ -275,6 +278,33 @@ function Dashboard({ onNavigate }) {
   const handleSlotClick = (court, time) => {
     /* verifica si el slot ya pasó */
     if (isSlotInPast(bookingDate, time)) return;
+    
+    // Verificar si es un slot con juego libre disponible
+    const isLibreSlot = court.slotsLibresDisponibles?.some(slot => {
+      const [slotH, slotM] = slot.split(':').map(Number);
+      const [timeH, timeM] = time.split(':').map(Number);
+      return slotH === timeH && slotM === timeM;
+    });
+    
+    if (isLibreSlot) {
+      // Buscar la reserva que corresponde a este slot
+      const pistaDB = selectedClub.courts.find(c => c.id === court.id);
+      if (pistaDB?.reservasData) {
+        const reserva = pistaDB.reservasData.find(r => {
+          const [rH, rM] = r.hora_inicio.split(':').map(Number);
+          const [tH, tM] = time.split(':').map(Number);
+          const rMinutes = rH * 60 + rM;
+          const tMinutes = tH * 60 + tM;
+          const duracionSlots = r.duracion / 30;
+          return tMinutes >= rMinutes && tMinutes < (rMinutes + (duracionSlots * 30));
+        });
+        
+        if (reserva) {
+          setJoinModal({ show: true, reserva });
+          return;
+        }
+      }
+    }
     
     const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const minDuration = policy.minDuration;
@@ -568,6 +598,95 @@ function Dashboard({ onNavigate }) {
       }
       
       setSelectedSlot(null);
+    }
+  };
+
+  /* 
+   función para cargar las peticiones recibidas por el usuario
+   */
+  const cargarPeticiones = async () => {
+    if (!currentUser) return;
+    
+    setLoadingPeticiones(true);
+    try {
+      const response = await verPeticiones(currentUser.udni);
+      setPeticiones(response.data || []);
+    } catch (error) {
+      console.error('Error al cargar peticiones:', error);
+      if (error.response?.status === 404) {
+        setPeticiones([]);
+      } else {
+        alert('Error al cargar las peticiones');
+      }
+    } finally {
+      setLoadingPeticiones(false);
+    }
+  };
+
+  /* 
+   manejador para enviar petición para unirse a un juego libre
+   */
+  const handleSendJoinRequest = async () => {
+    if (!joinModal.reserva || !currentUser) return;
+    
+    try {
+      await enviarPeticion({ 
+        udni: currentUser.udni, 
+        rid: joinModal.reserva.rid 
+      });
+      
+      alert('¡Petición enviada! El creador de la reserva la revisará.');
+      setJoinModal({ show: false, reserva: null });
+    } catch (error) {
+      console.error('Error al enviar petición:', error);
+      if (error.response?.data?.error) {
+        alert(error.response.data.error);
+      } else {
+        alert('Error al enviar la petición');
+      }
+    }
+  };
+
+  /* 
+   manejador para aceptar una petición
+   */
+  const handleAcceptRequest = async (irid) => {
+    try {
+      await aceptarPeticion({ irid });
+      
+      alert('¡Petición aceptada! El jugador se ha unido a tu reserva.');
+      
+      // Recargar peticiones y actualizar datos del usuario
+      cargarPeticiones();
+      
+      // Actualizar el monedero del usuario actual
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData) {
+        setCurrentUser({...userData});
+      }
+    } catch (error) {
+      console.error('Error al aceptar petición:', error);
+      if (error.response?.data?.error) {
+        alert(error.response.data.error);
+      } else {
+        alert('Error al aceptar la petición');
+      }
+    }
+  };
+
+  /* 
+   manejador para rechazar una petición
+   */
+  const handleRejectRequest = async (irid) => {
+    try {
+      await rechazarPeticion({ irid });
+      
+      alert('Petición rechazada');
+      // Recargar peticiones
+      cargarPeticiones();
+    } catch (error) {
+      console.error('Error al rechazar petición:', error);
+      alert('Error al rechazar la petición');
     }
   };
 
@@ -1097,6 +1216,7 @@ function Dashboard({ onNavigate }) {
           // Filtrar slots ocupados por reservas
           const reservas = pistaDB.reservas || [];
           const slotsOcupados = new Set();
+          const slotsLibresDisponibles = new Set(); // Nuevo: slots con juego libre disponible
           
           reservas.forEach(reserva => {
             // hora_inicio puede venir como "HH:MM:SS" o "HH:MM"
@@ -1111,7 +1231,16 @@ function Dashboard({ onNavigate }) {
             for (let i = 0; i < duracionSlots; i++) {
               const hora = Math.floor(currentMinutes / 60);
               const min = currentMinutes % 60;
-              slotsOcupados.add(`${hora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+              const slot = `${hora.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+              
+              // Si es tipo Libre con huecos disponibles, marcarlo como disponible para unirse
+              if (reserva.tipo === 'Libre' && reserva.huecos_libres > 0) {
+                slotsLibresDisponibles.add(slot);
+              } else {
+                // Si es Completa o Libre sin huecos, marcar como ocupado
+                slotsOcupados.add(slot);
+              }
+              
               currentMinutes += 30;
             }
           });
@@ -1139,7 +1268,12 @@ function Dashboard({ onNavigate }) {
             if (!slotsOcupados.has(slot2)) slotsDisponibles.push(slot2);
           }
           
-          return { ...court, slots: slotsDisponibles };
+          return { 
+            ...court, 
+            slots: slotsDisponibles,
+            slotsLibresDisponibles: Array.from(slotsLibresDisponibles), // Añadir info de slots con juego libre
+            reservasData: reservas // Guardar datos completos de reservas para mostrar info
+          };
         });
         
         setSelectedClub(prev => ({ ...prev, courts: courtsActualizados }));
@@ -1250,6 +1384,10 @@ function Dashboard({ onNavigate }) {
               )}
             </li>
             <li className="nav-item" onClick={() => setView('club-search')}>Buscar Pista</li>
+            <li className="nav-item" onClick={() => {
+              setView('peticiones');
+              cargarPeticiones();
+            }}>Peticiones</li>
             <li className="nav-item" onClick={() => {
               setView('my-bookings');
               if (currentUser?.udni) {
@@ -1588,6 +1726,108 @@ function Dashboard({ onNavigate }) {
                     )}
                 </section>
             </>
+        ) : view === 'peticiones' ? (
+            <>
+                <section className="bookings-section" style={{padding: '2rem', maxWidth: '1200px', margin: '0 auto'}}>
+                    <h2 className="section-title" style={{marginBottom: '2rem'}}>Peticiones Recibidas</h2>
+                    
+                    {loadingPeticiones ? (
+                        <div style={{textAlign: 'center', padding: '3rem'}}>
+                            <p>Cargando peticiones...</p>
+                        </div>
+                    ) : peticiones.length === 0 ? (
+                        <div style={{textAlign: 'center', padding: '3rem', backgroundColor: 'white', borderRadius: '16px'}}>
+                            <p style={{fontSize: '1.1rem', color: '#666'}}>No tienes peticiones pendientes</p>
+                        </div>
+                    ) : (
+                        <div style={{display: 'grid', gap: '1.5rem'}}>
+                            {peticiones.map((peticion, index) => (
+                                <div key={index} style={{
+                                    backgroundColor: 'white',
+                                    borderRadius: '16px',
+                                    padding: '1.5rem',
+                                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr auto',
+                                    gap: '1.5rem',
+                                    alignItems: 'center'
+                                }}>
+                                    {/* Fecha y hora */}
+                                    <div style={{
+                                        backgroundColor: '#f9fafb',
+                                        borderRadius: '12px',
+                                        padding: '1rem',
+                                        textAlign: 'center',
+                                        minWidth: '100px'
+                                    }}>
+                                        <div style={{fontSize: '1.5rem', fontWeight: '700', color: '#111'}}>
+                                            {new Date(peticion['hora inicio']).getDate()}
+                                        </div>
+                                        <div style={{fontSize: '0.875rem', color: '#666', textTransform: 'uppercase'}}>
+                                            {new Date(peticion['hora inicio']).toLocaleDateString('es-ES', { month: 'short' })}
+                                        </div>
+                                        <div style={{fontSize: '0.875rem', color: '#666', marginTop: '0.5rem'}}>
+                                            {peticion['hora inicio']}
+                                        </div>
+                                    </div>
+
+                                    {/* Información de la petición */}
+                                    <div>
+                                        <h3 style={{fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem'}}>
+                                            {peticion.nombre} {peticion.apellidos}
+                                        </h3>
+                                        <div style={{display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.875rem', color: '#666'}}>
+                                            <span>🏢 {peticion.empresa}</span>
+                                            <span>⏱️ {peticion.duracion} min</span>
+                                            <span>🎾 Nivel: {peticion['nivel de juego']}</span>
+                                            <span>📍 {peticion['huecos libres']} huecos libres</span>
+                                        </div>
+                                        <div style={{marginTop: '0.5rem', fontSize: '0.875rem', color: '#666'}}>
+                                            📍 {peticion.direccion}
+                                        </div>
+                                    </div>
+
+                                    {/* Botones de acción */}
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                                        <button 
+                                            onClick={() => handleAcceptRequest(peticion.irid)}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                backgroundColor: '#d1fae5',
+                                                border: '1px solid #a7f3d0',
+                                                borderRadius: '8px',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '500',
+                                                color: '#065f46',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            ✓ Aceptar
+                                        </button>
+                                        <button 
+                                            onClick={() => handleRejectRequest(peticion.irid)}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                backgroundColor: '#fee2e2',
+                                                border: '1px solid #fecaca',
+                                                borderRadius: '8px',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '500',
+                                                color: '#991b1b',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            ✗ Rechazar
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </>
         ) : view === 'club-details' && selectedClub ? (
           <section className="club-details-section fade-in">
             {/* Header with Image */}
@@ -1658,6 +1898,10 @@ function Dashboard({ onNavigate }) {
                               const isBookableFull = checkBookability(court, timeSlotFull);
                               const isBookableHalf = checkBookability(court, timeSlotHalf);
                               
+                              // Check if there's a free game available (Juego Libre con huecos)
+                              const hasLibreFull = court.slotsLibresDisponibles?.includes(timeSlotFull);
+                              const hasLibreHalf = court.slotsLibresDisponibles?.includes(timeSlotHalf);
+                              
                               const isHoveredFull = isSlotInHoverRange(court.id, timeSlotFull);
                               const isHoveredHalf = isSlotInHoverRange(court.id, timeSlotHalf);
                               
@@ -1668,15 +1912,21 @@ function Dashboard({ onNavigate }) {
                                 <td key={hour} className="slot-cell-container" style={{position: 'relative'}}>
                                   <div className="slot-cell-split">
                                     <div 
-                                      className={`half-slot ${isBookableFull ? 'available' : 'unavailable'} ${isHoveredFull ? 'hover-highlight' : ''} ${isSelectedFull ? 'selected-highlight' : ''}`}
-                                      onClick={(e) => isBookableFull && handleSlotClick(court, timeSlotFull, e)}
-                                      onMouseEnter={() => isBookableFull && handleSlotMouseEnter(court.id, timeSlotFull)}
+                                      className={`half-slot ${
+                                        hasLibreFull ? 'libre-available' : 
+                                        isBookableFull ? 'available' : 'unavailable'
+                                      } ${isHoveredFull ? 'hover-highlight' : ''} ${isSelectedFull ? 'selected-highlight' : ''}`}
+                                      onClick={(e) => (isBookableFull || hasLibreFull) && handleSlotClick(court, timeSlotFull, e)}
+                                      onMouseEnter={() => (isBookableFull || hasLibreFull) && handleSlotMouseEnter(court.id, timeSlotFull)}
                                       onMouseLeave={handleSlotMouseLeave}
                                     ></div>
                                     <div 
-                                      className={`half-slot ${isBookableHalf ? 'available' : 'unavailable'} ${isHoveredHalf ? 'hover-highlight' : ''} ${isSelectedHalf ? 'selected-highlight' : ''}`}
-                                      onClick={(e) => isBookableHalf && handleSlotClick(court, timeSlotHalf, e)}
-                                      onMouseEnter={() => isBookableHalf && handleSlotMouseEnter(court.id, timeSlotHalf)}
+                                      className={`half-slot ${
+                                        hasLibreHalf ? 'libre-available' : 
+                                        isBookableHalf ? 'available' : 'unavailable'
+                                      } ${isHoveredHalf ? 'hover-highlight' : ''} ${isSelectedHalf ? 'selected-highlight' : ''}`}
+                                      onClick={(e) => (isBookableHalf || hasLibreHalf) && handleSlotClick(court, timeSlotHalf, e)}
+                                      onMouseEnter={() => (isBookableHalf || hasLibreHalf) && handleSlotMouseEnter(court.id, timeSlotHalf)}
                                       onMouseLeave={handleSlotMouseLeave}
                                     ></div>
                                   </div>
@@ -1787,6 +2037,7 @@ function Dashboard({ onNavigate }) {
                   
                   <div className="legend">
                     <div className="legend-item"><span className="box available"></span> Disponible</div>
+                    <div className="legend-item"><span className="box libre-available"></span> Juego libre disponible</div>
                     <div className="legend-item"><span className="box unavailable"></span> No disponible</div>
                     <div className="legend-item"><span className="box selected"></span> Tu reserva</div>
                   </div>
@@ -2143,6 +2394,81 @@ function Dashboard({ onNavigate }) {
                 }}
               >
                 Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para unirse a juego libre */}
+      {joinModal.show && joinModal.reserva && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '16px',
+            padding: '2rem',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', fontWeight: '600' }}>
+              Unirse a Juego Libre
+            </h3>
+            <p style={{ marginBottom: '1.5rem', color: '#666' }}>
+              ¿Quieres enviar una petición para unirte a esta partida?
+            </p>
+            <div style={{
+              backgroundColor: '#f9fafb',
+              padding: '1rem',
+              borderRadius: '8px',
+              marginBottom: '1.5rem'
+            }}>
+              <p><strong>Club:</strong> {selectedClub?.name}</p>
+              <p><strong>Duración:</strong> {joinModal.reserva.duracion} min</p>
+              <p><strong>Nivel:</strong> {joinModal.reserva.nivel_de_juego}</p>
+              <p><strong>Huecos disponibles:</strong> {joinModal.reserva.huecos_libres}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                onClick={() => setJoinModal({ show: false, reserva: null })}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSendJoinRequest}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  backgroundColor: '#059669',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Enviar petición
               </button>
             </div>
           </div>

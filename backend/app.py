@@ -636,7 +636,7 @@ def end_rechazar_peticion():
 
     return {"message": "Petición rechazada"}, 200
 
-@app.route('/verpeticiones', methods=['GET'])
+@app.route('/verpeticiones', methods=['POST'])
 def end_ver_peticiones():
     datos = flask.request.get_json()
 
@@ -656,17 +656,21 @@ def end_ver_peticiones():
             JOIN Pistas p ON r.pista = p.pid
             JOIN Empresas e ON p.empresa = e.eid
             JOIN Usuarios u ON ir.usuario = u.uid
-            JOIN ParticipantesReserva pr ON pr.reserva = r.rid
-            JOIN Usuarios uc ON pr.usuario = uc.uid
-            WHERE uc.udni = %s
-            AND pr.es_creador = 1
+            WHERE EXISTS (
+                SELECT 1 
+                FROM ParticipantesReserva pr
+                JOIN Usuarios uc ON pr.usuario = uc.uid
+                WHERE pr.reserva = r.rid
+                AND uc.udni = %s
+                AND pr.es_creador = 1
+            )
             ORDER BY r.hora_inicio DESC;
             """
 
     filas = enviarSelect(sql, [datos.get("udni")])
 
     if not filas:
-        return {"Error": "No existen peticiones para este usuario"}, 404
+        return flask.jsonify([])
     
     #normalizarHoras(filas)
     return flask.jsonify(filas)
@@ -718,7 +722,7 @@ def end_obtenerEmpresa(nombre):
         if fecha:
             for pista in pistas:
                 sql_reservas = """
-                    SELECT hora_inicio, duracion, estado
+                    SELECT rid, hora_inicio, duracion, estado, tipo, huecos_libres, nivel_de_juego
                     FROM Reserva 
                     WHERE pista = %s AND DATE(hora_inicio) = %s AND estado != 'Realizada'
                 """
