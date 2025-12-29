@@ -130,18 +130,31 @@
 }
 
 .btn-back {
-  background: none;
-  border: none;
-  font-size: 1rem;
+  position: fixed;
+  top: 90px;
+  left: 20px;
+  z-index: 999;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   color: #666;
   cursor: pointer;
-  padding: 0.5rem 1rem 0.5rem 0;
-  transition: color 0.3s;
-  
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .btn-back:hover {
+  background: #fff;
   color: #000;
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .search-header {
@@ -975,23 +988,31 @@
 }
 
 .club-details-container .btn-back {
+  position: fixed;
+  top: 90px;
+  left: 20px;
+  z-index: 999;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 1rem;
-  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 500;
   color: #666;
-  background: none;
-  border: none;
   cursor: pointer;
-  padding: 0.5rem 1rem;
   transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
 }
 
 .club-details-container .btn-back:hover {
+  background: #fff;
   color: #000;
-  transform: translateX(-3px);
+  border-color: #d1d5db;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .breadcrumbs {

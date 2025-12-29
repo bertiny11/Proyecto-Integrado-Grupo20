@@ -7,7 +7,7 @@ import { format, addDays, subDays } from 'date-fns';
 import '../styles/Home.css';
 import '../styles/Dashboard.css';
 import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
-import { getEmpresas, getEmpresa, getReservas, actualizarMonedero } from '../services/api';
+import { getEmpresas, getEmpresa, getReservas, actualizarMonedero, crearReserva, getReservasPorNivel, enviarPeticion, verPeticiones, aceptarPeticion, rechazarPeticion } from '../services/api';
 
 registerLocale('es', es);
 
@@ -427,8 +427,9 @@ function Dashboard({ onNavigate }) {
   };
 
   /* 
-   manejador para confirmar la reserva y actualizar el monedero
-   resta el precio del monedero del usuario sin crear la reserva en BD
+   manejador para confirmar la reserva
+   crea una reserva completa con el endpoint /reservar
+   incluye verificación de monedero, creación de reserva y actualización de datos
    */
   const handleContinueBooking = async () => {
     if (!selectedSlot || !currentUser) {
@@ -446,36 +447,71 @@ function Dashboard({ onNavigate }) {
     }
 
     try {
-      // Actualizar monedero (restar el precio con valor negativo)
-      const response = await actualizarMonedero({
-        udni: currentUser.udni,
-        cantidad: -precio
-      });
-      
-      // Actualizar el monedero del usuario en el estado
-      const nuevoSaldo = response.data[0].monedero;
-      setCurrentUser(prev => ({
-        ...prev,
-        monedero: nuevoSaldo
-      }));
-
-      // Actualizar también en localStorage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        user.monedero = nuevoSaldo;
-        localStorage.setItem('user', JSON.stringify(user));
+      // Buscar el ID de la pista desde selectedClub.courts usando courtName
+      const court = selectedClub.courts.find(c => c.name === selectedSlot.courtName);
+      if (!court || !court.pid) {
+        alert('Error: No se pudo encontrar la pista seleccionada');
+        return;
       }
 
-      alert(`¡Pago realizado! Nuevo saldo: ${parseFloat(nuevoSaldo).toFixed(2)}€`);
-      setSelectedSlot(null);
+      // Formatear hora_inicio: combinar fecha de bookingDate con startTime del slot
+      const [hours, minutes] = selectedSlot.startTime.split(':');
+      const fechaReserva = new Date(bookingDate);
+      fechaReserva.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      const hora_inicio = format(fechaReserva, 'yyyy-MM-dd HH:mm:ss');
+
+      // Preparar datos de la reserva
+      const reservaData = {
+        udni: currentUser.udni,
+        pista: court.pid.toString(),
+        hora_inicio: hora_inicio,
+        duracion: selectedSlot.selectedDuration.toString(),
+        nivel_de_juego: currentUser.nivel_de_juego || 'A',
+        tipo: 'Libre'
+      };
+
+      // Crear la reserva
+      const response = await crearReserva(reservaData);
+      
+      if (response.data.success) {
+        // Actualizar el monedero del usuario en el estado
+        const nuevoSaldo = parseFloat(currentUser.monedero) - precio;
+        setCurrentUser(prev => ({
+          ...prev,
+          monedero: nuevoSaldo
+        }));
+
+        // Actualizar también en localStorage
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          user.monedero = nuevoSaldo;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+
+        alert(`¡Reserva creada exitosamente! Nuevo saldo: ${nuevoSaldo.toFixed(2)}€`);
+        setSelectedSlot(null);
+        
+        // Recargar disponibilidad
+        const nombreEmpresa = selectedClub.name;
+        const fechaStr = format(bookingDate, 'yyyy-MM-dd');
+        const empresaResponse = await getEmpresa(nombreEmpresa, fechaStr);
+        if (empresaResponse.data) {
+          setSelectedClub(prev => ({
+            ...prev,
+            courts: empresaResponse.data.pistas
+          }));
+        }
+      } else {
+        alert(`Error: ${response.data.error || 'No se pudo crear la reserva'}`);
+      }
       
     } catch (error) {
-      console.error('Error al actualizar monedero:', error);
+      console.error('Error al crear reserva:', error);
       if (error.response?.data?.error) {
         alert(`Error: ${error.response.data.error}`);
       } else {
-        alert('Error al procesar el pago. Por favor, intenta de nuevo.');
+        alert('Error al procesar la reserva');
       }
     }
   };
@@ -915,6 +951,7 @@ function Dashboard({ onNavigate }) {
           // Formatear pistas
           const courts = empresa.pistas ? empresa.pistas.map((pista, index) => ({
             id: `p${pista.pid}`,
+            pid: pista.pid,
             name: `Pista ${index + 1}`,
             type: pista.tipo === 'cristal' ? 'glass' : 'wall',
             indoor: pista.indoor === 1,
@@ -1159,6 +1196,16 @@ function Dashboard({ onNavigate }) {
 
       {/* VISTA 1: DASHBOARD */}
       <main className="dashboard-content">
+        {/* Botones de volver - fuera de la animación */}
+        {view !== 'dashboard' && (
+          <button 
+            className="btn-back"
+            onClick={() => setView('dashboard')}
+          >
+            ← Volver
+          </button>
+        )}
+        
         <div key={view} className="view-transition">
         {view === 'dashboard' ? (
           <>
@@ -1206,41 +1253,6 @@ function Dashboard({ onNavigate }) {
           </>
         ) : view === 'profile' ? (
             <>
-                <button 
-                    onClick={() => setView('dashboard')}
-                    style={{
-                        position: 'fixed',
-                        top: '100px',
-                        left: '2rem',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        fontSize: '1rem',
-                        color: '#666',
-                        cursor: 'pointer',
-                        padding: '0.75rem 1.25rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontWeight: '500',
-                        transition: 'all 0.2s',
-                        zIndex: 1000,
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                        backdropFilter: 'blur(10px)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#000';
-                        e.currentTarget.style.borderColor = '#000';
-                        e.currentTarget.style.transform = 'translateX(-5px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#666';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                >
-                    ← Volver
-                </button>
                 <section className="profile-section" style={{padding: '2rem', maxWidth: '800px', margin: '0 auto'}}>
                     <h2 className="section-title" style={{marginBottom: '2rem'}}>Mi Perfil</h2>
                 
@@ -1335,41 +1347,6 @@ function Dashboard({ onNavigate }) {
             </>
         ) : view === 'my-bookings' ? (
             <>
-                <button 
-                    onClick={() => setView('dashboard')}
-                    style={{
-                        position: 'fixed',
-                        top: '100px',
-                        left: '2rem',
-                        background: 'rgba(255, 255, 255, 0.95)',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        fontSize: '1rem',
-                        color: '#666',
-                        cursor: 'pointer',
-                        padding: '0.75rem 1.25rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        fontWeight: '500',
-                        transition: 'all 0.2s',
-                        zIndex: 1000,
-                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                        backdropFilter: 'blur(10px)'
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#000';
-                        e.currentTarget.style.borderColor = '#000';
-                        e.currentTarget.style.transform = 'translateX(-5px)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.color = '#666';
-                        e.currentTarget.style.borderColor = '#e5e7eb';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                >
-                    ← Volver
-                </button>
                 <section className="bookings-section" style={{padding: '2rem', maxWidth: '1200px', margin: '0 auto'}}>
                     <h2 className="section-title" style={{marginBottom: '2rem'}}>Mis Reservas</h2>
                     
@@ -1732,7 +1709,6 @@ function Dashboard({ onNavigate }) {
         ) : (
           <section className="club-search-section fade-in">
             <div className="search-header">
-              <button className="btn-back" onClick={() => setView('dashboard')}>← Volver</button>
               <h2 className="section-title">Buscar Pistas</h2>
             </div>
 
