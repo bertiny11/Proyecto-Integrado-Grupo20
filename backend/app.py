@@ -431,25 +431,34 @@ def end_reservar():
                     conexion.rollback()
                     return {"error": "Usuario no encontrado"}, 404
 
-                if datos["tipo"] == "Completa": # si es completa, el precio se paga completo
-                    coste = 4 * precios.get(int(datos["duracion"]))
-                else:
-                    coste = precios.get(int(datos["duracion"]))
+                # Calcular el coste según el tipo
+                precio_base = precios.get(int(datos["duracion"]))
+                if datos["tipo"] == "Libre": # si es libre, pagas tu parte (1/4)
+                    coste = precio_base / 4
+                else:  # Completa: pagas el precio completo
+                    coste = precio_base
 
                 if fila["monedero"] < coste:
                     conexion.rollback()
                     return {"error": "Saldo insuficiente"}, 400
 
+                # Determinamos los huecos libres según el tipo
+                if datos["tipo"] == "Libre":
+                    huecos_libres = 3  # Quedan 3 huecos después del creador
+                else:  # Completa
+                    huecos_libres = 0  # No hay huecos libres
+
                 # Creamos la reserva
                 cursor.execute("""
-                    INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo)
-                    VALUES (%s, %s, %s, %s, %s);""", (
+                    INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo, huecos_libres)
+                    VALUES (%s, %s, %s, %s, %s, %s);""", (
                     
                     int(datos["pista"]),
                     datos["hora_inicio"],
                     int(datos["duracion"]),
                     datos["nivel_de_juego"],
-                    datos["tipo"]))
+                    datos["tipo"],
+                    huecos_libres))
                 
                 rid = cursor.lastrowid  # obtenemos el id de la reserva creada
 

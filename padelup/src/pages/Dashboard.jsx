@@ -7,7 +7,7 @@ import { format, addDays, subDays } from 'date-fns';
 import '../styles/Home.css';
 import '../styles/Dashboard.css';
 import dropdownArrow from '../assets/dropdown-menu-arrow.svg';
-import { getEmpresas, getEmpresa, getReservas, actualizarMonedero, crearReserva, getReservasPorNivel, enviarPeticion, verPeticiones, aceptarPeticion, rechazarPeticion } from '../services/api';
+import { getEmpresas, getEmpresa, getReservas, actualizarMonedero, crearReserva, getReservasPorNivel, enviarPeticion, verPeticiones, aceptarPeticion, rechazarPeticion, eliminarReserva } from '../services/api';
 
 registerLocale('es', es);
 
@@ -453,8 +453,9 @@ function Dashboard({ onNavigate }) {
     const selectedOption = selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration);
     let precio = selectedOption.price;
     
-    // Si es reserva completa, el precio se divide entre 4 jugadores (cada uno paga su parte)
-    if (selectedSlot.selectedType === 'Completa') {
+    // Si es juego libre, el precio se divide entre 4 (pagas tu parte)
+    // Si es reserva completa, pagas el precio completo (toda la pista)
+    if (selectedSlot.selectedType === 'Libre') {
       precio = precio / 4;
     }
     
@@ -1503,7 +1504,7 @@ function Dashboard({ onNavigate }) {
                                             <span>⏱️ {booking.duracion} min</span>
                                             <span>🎾 Nivel: {booking.nivel_de_juego || 'N/A'}</span>
                                             <span>👥 Tipo: {booking.tipo}</span>
-                                            {booking.huecos_libres > 0 && (
+                                            {booking.tipo === 'Libre' && booking.huecos_libres > 0 && (
                                                 <span>📍 {booking.huecos_libres} huecos libres</span>
                                             )}
                                         </div>
@@ -1705,14 +1706,14 @@ function Dashboard({ onNavigate }) {
                                           className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
                                           onClick={() => handleTypeSelect('Libre')}
                                         >
-                                          <span>Juego Libre</span>
+                                          <span>Reserva Completa</span>
                                           <span className="type-description">Pagas la pista completa</span>
                                         </div>
                                         <div 
                                           className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
                                           onClick={() => handleTypeSelect('Completa')}
                                         >
-                                          <span>Reserva Completa</span>
+                                          <span>Juego Libre</span>
                                           <span className="type-description">Pagas tu parte (1/4)</span>
                                         </div>
                                       </div>
@@ -1752,14 +1753,14 @@ function Dashboard({ onNavigate }) {
                                           className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
                                           onClick={() => handleTypeSelect('Libre')}
                                         >
-                                          <span>Juego Libre</span>
+                                          <span>Reserva Completa</span>
                                           <span className="type-description">Pagas la pista completa</span>
                                         </div>
                                         <div 
                                           className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
                                           onClick={() => handleTypeSelect('Completa')}
                                         >
-                                          <span>Reserva Completa</span>
+                                          <span>Juego Libre</span>
                                           <span className="type-description">Pagas tu parte (1/4)</span>
                                         </div>
                                       </div>
