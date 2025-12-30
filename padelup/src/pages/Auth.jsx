@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { loginUser, registerUser } from '../services/api';
 import '../styles/Auth.css';
 
-function Auth({ onNavigate }) {
+function Auth({ onNavigate, initialMode = 'login' }) {
   // Estado para alternar entre Login (true) y Registro (false)
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(initialMode !== 'signup');
   const [loading, setLoading] = useState(false);
   
   // Unificamos el estado: 'udni' será el usuario en Login y en Registro
@@ -141,33 +141,30 @@ function Auth({ onNavigate }) {
           {apiError && <div className="error-message" style={{color: 'red', marginBottom: '10px', textAlign: 'center'}}>{apiError}</div>}
 
           {/* --- CAMPOS EXCLUSIVOS DE REGISTRO (ARRIBA) --- */}
-          {/* Usamos renderizado condicional: Si es Login, esto NO existe en el DOM */}
-          {!isLogin && (
-            <>
-              <div className="form-group">
-                <input
-                  type="text" name="nombre" placeholder="Nombre completo"
-                  value={formData.nombre} onChange={handleChange}
-                />
-                {errors.nombre && <span style={{color:'red', fontSize:'12px'}}>{errors.nombre}</span>}
-              </div>
+          <div className={`form-group ${isLogin ? 'hidden' : 'visible'}`}>
+            <input
+              type="text" name="nombre" placeholder="Nombre completo"
+              value={formData.nombre} onChange={handleChange}
+              disabled={isLogin}
+            />
+            {errors.nombre && <span style={{color:'red', fontSize:'12px'}}>{errors.nombre}</span>}
+          </div>
 
-              <div className="form-group">
-                <input
-                  type="text" name="apellidos" placeholder="Apellidos"
-                  value={formData.apellidos} onChange={handleChange}
-                />
-                {errors.apellidos && <span style={{color:'red', fontSize:'12px'}}>{errors.apellidos}</span>}
-              </div>
-            </>
-          )}
+          <div className={`form-group ${isLogin ? 'hidden' : 'visible'}`}>
+            <input
+              type="text" name="apellidos" placeholder="Apellidos"
+              value={formData.apellidos} onChange={handleChange}
+              disabled={isLogin}
+            />
+            {errors.apellidos && <span style={{color:'red', fontSize:'12px'}}>{errors.apellidos}</span>}
+          </div>
 
           {/* --- CAMPOS COMUNES (USUARIO Y PASSWORD) --- */}
           <div className="form-group">
             <input
               type="text" 
               name="udni" 
-              placeholder="Usuario" // Solo dice Usuario
+              placeholder="Usuario"
               value={formData.udni} 
               onChange={handleChange}
               required
@@ -185,15 +182,14 @@ function Auth({ onNavigate }) {
           </div>
 
           {/* --- CAMPO EXCLUSIVO DE REGISTRO (ABAJO) --- */}
-          {!isLogin && (
-            <div className="form-group">
-              <input
-                type="password" name="confirmPassword" placeholder="Confirmar contraseña"
-                value={formData.confirmPassword} onChange={handleChange}
-              />
-              {errors.confirmPassword && <span style={{color:'red', fontSize:'12px'}}>{errors.confirmPassword}</span>}
-            </div>
-          )}
+          <div className={`form-group ${isLogin ? 'hidden' : 'visible'}`}>
+            <input
+              type="password" name="confirmPassword" placeholder="Confirmar contraseña"
+              value={formData.confirmPassword} onChange={handleChange}
+              disabled={isLogin}
+            />
+            {errors.confirmPassword && <span style={{color:'red', fontSize:'12px'}}>{errors.confirmPassword}</span>}
+          </div>
 
           <button type="submit" className="submit-button" disabled={loading}>
             {loading ? 'Procesando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}

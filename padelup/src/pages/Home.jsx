@@ -40,12 +40,25 @@ function Home({ onNavigate }) {
     
   ];
 
+  const isLoggedIn = !!localStorage.getItem('token');
+
+  const handleLogoClick = () => {
+    if (isLoggedIn) {
+      onNavigate('dashboard');
+    }
+    // Si no está logueado, ya está en home, no hace nada
+  };
+
   return (
     <div className={`home-container ${tabs[activeTab].theme}`}>
       {/* Navbar */}
       <nav className="navbar">
         <div className="navbar-left">
-          <div className="logo">
+          <div 
+            className="logo" 
+            onClick={handleLogoClick} 
+            style={{ cursor: isLoggedIn ? 'pointer' : 'default' }}
+          >
             <img src="/padelup_logo2.png" alt="PadelUp Logo" className="logo-img" />
           </div>
           <ul className="nav-menu">
@@ -78,7 +91,7 @@ function Home({ onNavigate }) {
           </button>
           <button 
             className="btn-signup"
-            onClick={() => onNavigate('register')}
+            onClick={() => onNavigate('auth', 'signup')}
           >
             Registrarse
           </button>
@@ -97,7 +110,7 @@ function Home({ onNavigate }) {
           Encuentra todo lo que necesitas en un solo lugar.
         </p>
         <div className="main-hero-buttons">
-          <button className="btn-primary-dark" onClick={() => onNavigate('dashboard')}>Empezar ahora →</button>
+          <button className="btn-primary-dark" onClick={() => onNavigate('auth', 'signup')}>Empezar ahora →</button>
           <button className="btn-secondary-light">Saber más</button>
         </div>
       </div>

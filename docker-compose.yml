@@ -26,6 +26,8 @@ services:
     container_name: padelup_backend
     ports:
       - "5176:5000"
+    volumes:
+      - ./backend:/app
     networks:
       - padelup_network
     depends_on:
@@ -46,6 +48,10 @@ services:
     container_name: padelup_frontend
     ports:
       - "5173:5173"
+    volumes:
+      - ./padelup/src:/app/src
+      - ./padelup/public:/app/public
+      - ./padelup/index.html:/app/index.html
     networks:
       - padelup_network
     depends_on:

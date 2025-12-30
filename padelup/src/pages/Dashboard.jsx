@@ -316,6 +316,7 @@ function Dashboard({ onNavigate }) {
     const closingMinutes = timeToMinutes(closingTime);
     
     // Calculate available consecutive minutes backwards
+    // Solo contar slots que NO hayan pasado
     let backwardsMinutes = 0;
     let backH = startH;
     let backM = startM;
@@ -330,7 +331,15 @@ function Dashboard({ onNavigate }) {
       backM = prevM;
       
       const prevTimeStr = `${prevH.toString().padStart(2, '0')}:${prevM.toString().padStart(2, '0')}`;
-      if (court.slots.includes(prevTimeStr)) {
+      
+      // Verificar que el slot NO ha pasado
+      if (isSlotInPast(bookingDate, prevTimeStr)) {
+        break;
+      }
+      
+      // Verificar que el slot está disponible Y no es un slot de juego libre
+      const isSlotLibre = court.slotsLibresDisponibles?.includes(prevTimeStr);
+      if (court.slots.includes(prevTimeStr) && !isSlotLibre) {
         backwardsMinutes += 30;
       } else {
         break;
@@ -341,6 +350,7 @@ function Dashboard({ onNavigate }) {
     let availableMinutes = 30; // Current slot
     let currentH = startH;
     let currentM = startM;
+    
     for (let i = 30; i < maxDuration; i += 30) {
       let nextM = currentM + 30;
       let nextH = currentH;
@@ -354,10 +364,12 @@ function Dashboard({ onNavigate }) {
       const nextTimeStr = `${nextH.toString().padStart(2, '0')}:${nextM.toString().padStart(2, '0')}`;
       const nextTimeMinutes = timeToMinutes(nextTimeStr);
       
-       // Stop if the slot would extend past closing time
+      // Stop if the slot would extend past closing time
       if (nextTimeMinutes + 30 > closingMinutes) break;
       
-      if (court.slots.includes(nextTimeStr)) {
+      // Verificar que el slot está disponible Y no es un slot de juego libre
+      const isSlotLibre = court.slotsLibresDisponibles?.includes(nextTimeStr);
+      if (court.slots.includes(nextTimeStr) && !isSlotLibre) {
         availableMinutes += 30;
       } else {
         break;
@@ -409,7 +421,7 @@ function Dashboard({ onNavigate }) {
         clickedTime: time,
         startTime: actualStartTime,
         selectedDuration: defaultOption.duration,
-        selectedType: 'Libre', // Tipo por defecto
+        selectedType: 'Completa', // Tipo por defecto
         options: options,
         forwardMinutes: availableMinutes - 30,
         backwardMinutes: backwardsMinutes
@@ -742,6 +754,13 @@ function Dashboard({ onNavigate }) {
         return;
     }
 
+    // Si es un slot de juego libre, no mostrar hover de extensión (solo click para unirse)
+    const isLibreSlot = court.slotsLibresDisponibles?.includes(time);
+    if (isLibreSlot) {
+      setHoveredSlot({ courtId, time, availableMinutes: 0, backwardsMinutes: 0, isLibreSlot: true });
+      return;
+    }
+
     const policy = selectedClub.bookingPolicy || { minDuration: 60, maxDuration: 120 };
     const maxDuration = policy.maxDuration;
     const [startH, startM] = time.split(':').map(Number);
@@ -750,7 +769,7 @@ function Dashboard({ onNavigate }) {
     const { closingTime } = getOpeningHours(selectedClub, bookingDate);
     const closingMinutes = timeToMinutes(closingTime);
 
-    // Count backwards
+    // Count backwards - solo slots que NO hayan pasado
     let backwardsMinutes = 0;
     let backH = startH;
     let backM = startM;
@@ -765,7 +784,15 @@ function Dashboard({ onNavigate }) {
        backM = prevM;
        
        const prevTimeStr = `${prevH.toString().padStart(2, '0')}:${prevM.toString().padStart(2, '0')}`;
-       if (court.slots.includes(prevTimeStr)) {
+       
+       // Verificar que el slot NO ha pasado
+       if (isSlotInPast(bookingDate, prevTimeStr)) {
+         break;
+       }
+       
+       // Verificar que el slot está disponible Y no es un slot de juego libre
+       const isSlotLibre = court.slotsLibresDisponibles?.includes(prevTimeStr);
+       if (court.slots.includes(prevTimeStr) && !isSlotLibre) {
          backwardsMinutes += 30;
        } else {
          break;
@@ -792,12 +819,15 @@ function Dashboard({ onNavigate }) {
        // Stop if the slot would extend past closing time
        if (nextTimeMinutes + 30 > closingMinutes) break;
        
-       if (court.slots.includes(nextTimeStr)) {
+       // Verificar que el slot está disponible Y no es un slot de juego libre
+       const isSlotLibre = court.slotsLibresDisponibles?.includes(nextTimeStr);
+       if (court.slots.includes(nextTimeStr) && !isSlotLibre) {
          availableMinutes += 30;
        } else {
          break;
        }
     }
+    
     setHoveredSlot({ courtId, time, availableMinutes, backwardsMinutes });
   };
 
@@ -833,7 +863,7 @@ function Dashboard({ onNavigate }) {
     const [startH, startM] = timeSlot.split(':').map(Number);
     let totalConsecutive = 30; // Current slot
     
-    // Check backwards
+    // Check backwards - solo slots que NO hayan pasado
     let backH = startH;
     let backM = startM;
     for (let i = 30; i < minDuration && totalConsecutive < minDuration; i += 30) {
@@ -847,7 +877,15 @@ function Dashboard({ onNavigate }) {
        backM = prevM;
        
        const prevTimeStr = `${prevH.toString().padStart(2, '0')}:${prevM.toString().padStart(2, '0')}`;
-       if (court.slots.includes(prevTimeStr)) {
+       
+       // Verificar que el slot NO ha pasado
+       if (isSlotInPast(bookingDate, prevTimeStr)) {
+         break;
+       }
+       
+       // Verificar que el slot está disponible Y no es un slot de juego libre
+       const isSlotLibre = court.slotsLibresDisponibles?.includes(prevTimeStr);
+       if (court.slots.includes(prevTimeStr) && !isSlotLibre) {
          totalConsecutive += 30;
        } else {
          break;
@@ -874,7 +912,9 @@ function Dashboard({ onNavigate }) {
          // Stop if the slot would extend past closing time
          if (nextTimeMinutes + 30 > closingMinutes) break;
          
-         if (court.slots.includes(nextTimeStr)) {
+         // Verificar que el slot está disponible Y no es un slot de juego libre
+         const isSlotLibre = court.slotsLibresDisponibles?.includes(nextTimeStr);
+         if (court.slots.includes(nextTimeStr) && !isSlotLibre) {
            totalConsecutive += 30;
          } else {
            break;
@@ -932,7 +972,10 @@ function Dashboard({ onNavigate }) {
         const [startH, startM] = slot.split(':').map(Number);
         let totalConsecutive = 30; // Current slot
         
-        // Check backwards
+        // Construir fecha para verificar slots pasados
+        const slotDate = filters.date || new Date();
+        
+        // Check backwards - solo slots que NO hayan pasado
         let backH = startH;
         let backM = startM;
         for (let i = 30; i < minDuration && totalConsecutive < minDuration; i += 30) {
@@ -946,7 +989,15 @@ function Dashboard({ onNavigate }) {
            backM = prevM;
            
            const prevTimeStr = `${prevH.toString().padStart(2, '0')}:${prevM.toString().padStart(2, '0')}`;
-           if (court.slots.includes(prevTimeStr)) {
+           
+           // Verificar que el slot NO ha pasado
+           if (isSlotInPast(slotDate, prevTimeStr)) {
+             break;
+           }
+           
+           // Verificar que el slot está disponible Y no es un slot de juego libre
+           const isSlotLibre = court.slotsLibresDisponibles?.includes(prevTimeStr);
+           if (court.slots.includes(prevTimeStr) && !isSlotLibre) {
              totalConsecutive += 30;
            } else {
              break;
@@ -973,7 +1024,9 @@ function Dashboard({ onNavigate }) {
              // Stop if the slot would extend past closing time
              if (nextTimeMinutes + 30 > closingMinutes) break;
              
-             if (court.slots.includes(nextTimeStr)) {
+             // Verificar que el slot está disponible Y no es un slot de juego libre
+             const isSlotLibre = court.slotsLibresDisponibles?.includes(nextTimeStr);
+             if (court.slots.includes(nextTimeStr) && !isSlotLibre) {
                totalConsecutive += 30;
              } else {
                break;
@@ -1236,10 +1289,10 @@ function Dashboard({ onNavigate }) {
               // Si es tipo Libre con huecos disponibles, marcarlo como disponible para unirse
               if (reserva.tipo === 'Libre' && reserva.huecos_libres > 0) {
                 slotsLibresDisponibles.add(slot);
-              } else {
-                // Si es Completa o Libre sin huecos, marcar como ocupado
-                slotsOcupados.add(slot);
               }
+              // Marcar SIEMPRE como ocupado (tanto Completa como Libre)
+              // Los slots de juego libre no deben permitir crear nuevas reservas encima
+              slotsOcupados.add(slot);
               
               currentMinutes += 30;
             }
@@ -1362,9 +1415,9 @@ function Dashboard({ onNavigate }) {
       <nav className="navbar">
         <div className="navbar-left">
           <div className="logo" onClick={() => {
+            setSelectedClub(null);
             setView('dashboard');
-            onNavigate('home');
-          }}>
+          }} style={{ cursor: 'pointer' }}>
             <img src="/padelup_logo2.png" alt="PadelUp Logo" className="logo-img" />
           </div>
           <ul className="nav-menu">
@@ -1423,11 +1476,19 @@ function Dashboard({ onNavigate }) {
 
       {/* VISTA 1: DASHBOARD */}
       <main className="dashboard-content">
-        {/* Botones de volver - fuera de la animación */}
-        {view !== 'dashboard' && (
+        {/* Botones de volver - fuera de la animación para evitar el salto visual */}
+        {view !== 'dashboard' && view !== 'club-details' && (
           <button 
             className="btn-back"
             onClick={() => setView('dashboard')}
+          >
+            ← Volver
+          </button>
+        )}
+        {view === 'club-details' && (
+          <button 
+            className="btn-back"
+            onClick={() => setView('club-search')}
           >
             ← Volver
           </button>
@@ -1838,9 +1899,6 @@ function Dashboard({ onNavigate }) {
             </div>
 
             <div className="club-details-container">
-              {/* Back Button */}
-              <button className="btn-back" onClick={() => setView('club-search')}>← Volver</button>
-              
               {/* Breadcrumbs */}
               <div className="breadcrumbs">
                 <span onClick={() => setView('dashboard')}>Home</span> 
@@ -1899,8 +1957,9 @@ function Dashboard({ onNavigate }) {
                               const isBookableHalf = checkBookability(court, timeSlotHalf);
                               
                               // Check if there's a free game available (Juego Libre con huecos)
-                              const hasLibreFull = court.slotsLibresDisponibles?.includes(timeSlotFull);
-                              const hasLibreHalf = court.slotsLibresDisponibles?.includes(timeSlotHalf);
+                              // Solo mostrar como libre si NO ha pasado la hora
+                              const hasLibreFull = court.slotsLibresDisponibles?.includes(timeSlotFull) && !isSlotInPast(bookingDate, timeSlotFull);
+                              const hasLibreHalf = court.slotsLibresDisponibles?.includes(timeSlotHalf) && !isSlotInPast(bookingDate, timeSlotHalf);
                               
                               const isHoveredFull = isSlotInHoverRange(court.id, timeSlotFull);
                               const isHoveredHalf = isSlotInHoverRange(court.id, timeSlotHalf);
@@ -1953,15 +2012,15 @@ function Dashboard({ onNavigate }) {
                                       <div className="popover-type-selector">
                                         <div className="type-selector-label">Tipo de reserva:</div>
                                         <div 
-                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
-                                          onClick={() => handleTypeSelect('Libre')}
+                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Completa')}
                                         >
                                           <span>Reserva Completa</span>
                                           <span className="type-description">Pagas la pista completa</span>
                                         </div>
                                         <div 
-                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
-                                          onClick={() => handleTypeSelect('Completa')}
+                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Libre')}
                                         >
                                           <span>Juego Libre</span>
                                           <span className="type-description">Pagas tu parte (1/4)</span>
@@ -1969,7 +2028,7 @@ function Dashboard({ onNavigate }) {
                                       </div>
                                       
                                       <button className="popover-continue-btn" onClick={handleContinueBooking}>
-                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Completa' ? 4 : 1)).toFixed(2).replace('.', ',')} €
+                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Libre' ? 4 : 1)).toFixed(2).replace('.', ',')} €
                                       </button>
                                       
                                       <button className="popover-close-btn" onClick={handleClosePopover}>
@@ -2000,15 +2059,15 @@ function Dashboard({ onNavigate }) {
                                       <div className="popover-type-selector">
                                         <div className="type-selector-label">Tipo de reserva:</div>
                                         <div 
-                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
-                                          onClick={() => handleTypeSelect('Libre')}
+                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Completa')}
                                         >
                                           <span>Reserva Completa</span>
                                           <span className="type-description">Pagas la pista completa</span>
                                         </div>
                                         <div 
-                                          className={`type-option ${selectedSlot.selectedType === 'Completa' ? 'selected' : ''}`}
-                                          onClick={() => handleTypeSelect('Completa')}
+                                          className={`type-option ${selectedSlot.selectedType === 'Libre' ? 'selected' : ''}`}
+                                          onClick={() => handleTypeSelect('Libre')}
                                         >
                                           <span>Juego Libre</span>
                                           <span className="type-description">Pagas tu parte (1/4)</span>
@@ -2016,7 +2075,7 @@ function Dashboard({ onNavigate }) {
                                       </div>
                                       
                                       <button className="popover-continue-btn" onClick={handleContinueBooking}>
-                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Completa' ? 4 : 1)).toFixed(2).replace('.', ',')} €
+                                        Continuar - {(selectedSlot.options.find(o => o.duration === selectedSlot.selectedDuration).price / (selectedSlot.selectedType === 'Libre' ? 4 : 1)).toFixed(2).replace('.', ',')} €
                                       </button>
                                       
                                       <button className="popover-close-btn" onClick={handleClosePopover}>
