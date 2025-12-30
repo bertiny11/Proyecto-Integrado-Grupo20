@@ -40,10 +40,9 @@ function Home({ onNavigate }) {
     
   ];
 
-  const isLoggedIn = !!localStorage.getItem('token');
-
   const handleLogoClick = () => {
-    if (isLoggedIn) {
+    const token = localStorage.getItem('token');
+    if (token) {
       onNavigate('dashboard');
     }
     // Si no está logueado, ya está en home, no hace nada
@@ -57,7 +56,7 @@ function Home({ onNavigate }) {
           <div 
             className="logo" 
             onClick={handleLogoClick} 
-            style={{ cursor: isLoggedIn ? 'pointer' : 'default' }}
+            style={{ cursor: 'pointer' }}
           >
             <img src="/padelup_logo2.png" alt="PadelUp Logo" className="logo-img" />
           </div>
