@@ -16,9 +16,9 @@ DB_PORT = int(os.getenv("MYSQL_PORT"))
 HASH_KEY = os.getenv("HASH_KEY").encode()
 
 precios = { # define los precios segun duracion
-    60: 5.0,
-    90: 7.0,
-    120: 9.0
+    60: 3.75,
+    90: 5.63,
+    120: 7.5
 }
 
 mapa = {    # define los niveles de juego permitidos
@@ -235,7 +235,7 @@ def end_registro():
         (udni, hashContrasena(contrasena), nombre, apellidos))
     return {"message": "Usuario creado"}, 201
 
-@app.route('/reservas', methods=['GET'])
+@app.route('/reservas', methods=['POST'])
 def end_ver_reservas():
     datos = flask.request.get_json()
     sql = """SELECT 
@@ -431,25 +431,34 @@ def end_reservar():
                     conexion.rollback()
                     return {"error": "Usuario no encontrado"}, 404
 
-                if datos["tipo"] == "Completa": # si es completa, el precio se paga completo
-                    coste = 4 * precios.get(int(datos["duracion"]))
-                else:
-                    coste = precios.get(int(datos["duracion"]))
+                # Calcular el coste según el tipo
+                precio_base = precios.get(int(datos["duracion"]))
+                if datos["tipo"] == "Libre": # si es libre, pagas tu parte (1/4)
+                    coste = precio_base / 4
+                else:  # Completa: pagas el precio completo
+                    coste = precio_base
 
                 if fila["monedero"] < coste:
                     conexion.rollback()
                     return {"error": "Saldo insuficiente"}, 400
 
+                # Determinamos los huecos libres según el tipo
+                if datos["tipo"] == "Libre":
+                    huecos_libres = 3  # Quedan 3 huecos después del creador
+                else:  # Completa
+                    huecos_libres = 0  # No hay huecos libres
+
                 # Creamos la reserva
                 cursor.execute("""
-                    INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo)
-                    VALUES (%s, %s, %s, %s, %s);""", (
+                    INSERT INTO Reserva (pista, hora_inicio, duracion, nivel_de_juego, tipo, huecos_libres)
+                    VALUES (%s, %s, %s, %s, %s, %s);""", (
                     
                     int(datos["pista"]),
                     datos["hora_inicio"],
                     int(datos["duracion"]),
                     datos["nivel_de_juego"],
-                    datos["tipo"]))
+                    datos["tipo"],
+                    huecos_libres))
                 
                 rid = cursor.lastrowid  # obtenemos el id de la reserva creada
 
@@ -627,7 +636,7 @@ def end_rechazar_peticion():
 
     return {"message": "Petición rechazada"}, 200
 
-@app.route('/verpeticiones', methods=['GET'])
+@app.route('/verpeticiones', methods=['POST'])
 def end_ver_peticiones():
     datos = flask.request.get_json()
 
@@ -647,17 +656,21 @@ def end_ver_peticiones():
             JOIN Pistas p ON r.pista = p.pid
             JOIN Empresas e ON p.empresa = e.eid
             JOIN Usuarios u ON ir.usuario = u.uid
-            JOIN ParticipantesReserva pr ON pr.reserva = r.rid
-            JOIN Usuarios uc ON pr.usuario = uc.uid
-            WHERE uc.udni = %s
-            AND pr.es_creador = 1
+            WHERE EXISTS (
+                SELECT 1 
+                FROM ParticipantesReserva pr
+                JOIN Usuarios uc ON pr.usuario = uc.uid
+                WHERE pr.reserva = r.rid
+                AND uc.udni = %s
+                AND pr.es_creador = 1
+            )
             ORDER BY r.hora_inicio DESC;
             """
 
     filas = enviarSelect(sql, [datos.get("udni")])
 
     if not filas:
-        return {"Error": "No existen peticiones para este usuario"}, 404
+        return flask.jsonify([])
     
     #normalizarHoras(filas)
     return flask.jsonify(filas)
@@ -709,7 +722,7 @@ def end_obtenerEmpresa(nombre):
         if fecha:
             for pista in pistas:
                 sql_reservas = """
-                    SELECT hora_inicio, duracion, estado
+                    SELECT rid, hora_inicio, duracion, estado, tipo, huecos_libres, nivel_de_juego
                     FROM Reserva 
                     WHERE pista = %s AND DATE(hora_inicio) = %s AND estado != 'Realizada'
                 """
@@ -765,6 +778,78 @@ def end_obtenerEmpresas():
             empresa['pistas'] = []
     
     return flask.jsonify(empresas)
+
+@app.route('/eliminar_reserva', methods=['DELETE'])
+def end_eliminar_reserva():
+    """Elimina una reserva y devuelve el dinero al monedero del usuario"""
+    datos = flask.request.get_json()
+    rid = datos.get("rid")
+    udni = datos.get("udni")
+    
+    if not rid or not udni:
+        return {"error": "Faltan datos requeridos (rid, udni)"}, 400
+    
+    try:
+        with conectarBD() as conexion:
+            with conexion.cursor() as cursor:
+                # Verificar que la reserva existe y obtener información
+                cursor.execute("""
+                    SELECT r.rid, r.duracion, r.tipo
+                    FROM Reserva r
+                    JOIN ParticipantesReserva p ON r.rid = p.reserva
+                    JOIN Usuarios u ON p.usuario = u.uid
+                    WHERE r.rid = %s AND u.udni = %s
+                """, (rid, udni))
+                
+                reserva = cursor.fetchone()
+                if not reserva:
+                    return {"error": "Reserva no encontrada o no pertenece al usuario"}, 404
+                
+                duracion = reserva['duracion']
+                tipo = reserva['tipo']
+                precio = precios.get(duracion)
+                
+                # Calcular el reembolso según el tipo
+                if tipo == 'Libre':
+                    reembolso = precio / 4  # El usuario pagó su parte
+                else:  # Completa
+                    reembolso = precio  # El usuario pagó todo
+                
+                # Devolver el dinero al monedero
+                cursor.execute("""
+                    UPDATE Usuarios 
+                    SET monedero = monedero + %s 
+                    WHERE udni = %s
+                """, (reembolso, udni))
+                
+                # Eliminar el participante
+                cursor.execute("""
+                    DELETE FROM ParticipantesReserva 
+                    WHERE reserva = %s AND usuario = (SELECT uid FROM Usuarios WHERE udni = %s)
+                """, (rid, udni))
+                
+                # Verificar si quedan más participantes
+                cursor.execute("SELECT COUNT(*) as count FROM ParticipantesReserva WHERE reserva = %s", (rid,))
+                count = cursor.fetchone()['count']
+                
+                # Si no quedan participantes, eliminar la reserva
+                if count == 0:
+                    cursor.execute("DELETE FROM Reserva WHERE rid = %s", (rid,))
+                else:
+                    # Si quedan participantes y es tipo Libre, incrementar huecos libres
+                    if tipo == 'Libre':
+                        cursor.execute("""
+                            UPDATE Reserva 
+                            SET huecos_libres = huecos_libres + 1 
+                            WHERE rid = %s
+                        """, (rid,))
+                
+                conexion.commit()
+                return {"success": True, "message": "Reserva eliminada correctamente", "reembolso": reembolso}, 200
+                
+    except Exception as e:
+        print(f"Error al eliminar reserva: {str(e)}")
+        return {"error": f"Error al eliminar reserva: {str(e)}"}, 500
 
 ##* Ejecutar la app *###
 if __name__ == '__main__':
