@@ -106,8 +106,8 @@ CREATE TABLE `Valoraciones` (
 
 -- Usuarios
 INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`cp`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'u11111111', 'contrasena_hash', 'Altagracia', 'García', '11500', 0.00, 'A', 5.0),
-(2, 'u22222222', 'contrasena_hash', 'Apolinario', 'Martín', '11408', 999.99, 'B', 3.8),
+(1, 'u11111111', '$2b$12$JXS8NZqlNojfQiY4XhWanuo/0dYenS2s8b5nR8IFkP2b6WSF5zTNK', 'Altagracia', 'García', '11500', 15.00, 'A', 5.0),
+(2, 'u22222222', '$2b$12$JXS8NZqlNojfQiY4XhWanuo/0dYenS2s8b5nR8IFkP2b6WSF5zTNK', 'Apolinario', 'Martín', '11408', 999.99, 'B', 3.8),
 (3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', '11009', 5.50,  'C', 0.0),
 (4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', '11411', 100.00,'D', 4.9),
 (5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', '11009', 50.00,   'F', 1.5),
