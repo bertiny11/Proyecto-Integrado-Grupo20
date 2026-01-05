@@ -16,9 +16,9 @@ DB_PORT = int(os.getenv("MYSQL_PORT"))
 HASH_KEY = os.getenv("HASH_KEY").encode()
 
 precios = { # define los precios segun duracion
-    60: 5.0,
-    90: 7.0,
-    120: 9.0
+    60: 3.75,
+    90: 5.63,
+    120: 7.5
 }
 
 mapa = {    # define los niveles de juego permitidos
