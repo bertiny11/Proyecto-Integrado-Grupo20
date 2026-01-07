@@ -8,7 +8,7 @@ services:
     ports:
       - "5175:3306"
     networks:
-      - padelup_network
+      - db_network
     healthcheck:
       test: [ "CMD-SHELL", "mysql -u root -p${MYSQL_ROOT_PASSWORD} -D ${MYSQL_DATABASE} -e 'SHOW TABLES;'" ]
       interval: 10s
@@ -30,6 +30,7 @@ services:
       - ./backend:/app
     networks:
       - padelup_network
+      - db_network
     depends_on:
       db:
         condition: service_healthy
@@ -66,6 +67,8 @@ services:
       - "5174:80"
     networks:
       - padelup_network
+      - db_network
+    restart: on-failure
     environment:
       PMA_HOST: db
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -75,3 +78,5 @@ services:
 networks:
   padelup_network:
     driver: bridge
+  db_network:
+    internal: true
