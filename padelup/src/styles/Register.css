@@ -1,0 +1,175 @@
+/* Contenedor principal: Ocupa toda la pantalla y centra el contenido */
+.register-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: #ffffff;
+    position: relative;
+    font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Botón de volver (arriba a la izquierda) */
+.btn-back {
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #374151;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.btn-back:hover {
+    background-color: #f9fafb;
+    border-color: #d1d5db;
+}
+
+/* Tarjeta central (ancho limitado) */
+.register-container {
+    width: 100%;
+    max-width: 400px; /* Ancho similar a la imagen */
+    padding: 20px;
+    text-align: center;
+}
+
+/* Título */
+.register-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: #111827;
+}
+
+/* Botón UCA (Blanco con borde) */
+.btn-uca-login {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px; /* Bordes redondeados */
+    font-size: 1rem;
+    font-weight: 500;
+    color: #1f2937;
+    cursor: pointer;
+    margin-bottom: 25px;
+    transition: background 0.2s;
+}
+
+.btn-uca-login:hover {
+    background-color: #f9fafb;
+}
+
+/* Separador con la 'o' */
+.separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 25px;
+    color: #9ca3af;
+}
+
+.separator::before,
+.separator::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.separator span {
+    padding: 0 10px;
+    font-size: 0.9rem;
+    background-color: white; /* Para que la línea no cruce la letra */
+}
+
+/* Formulario */
+.register-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Inputs (Campos de texto) */
+.register-form input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px; /* Bordes suaves */
+    font-size: 1rem;
+    background-color: #f9fafb; /* Fondo gris muy claro */
+    outline: none;
+    box-sizing: border-box;
+    color: #374151;
+    transition: border 0.2s;
+}
+
+.register-form input::placeholder {
+    color: #9ca3af;
+}
+
+.register-form input:focus {
+    border-color: #111827;
+    background-color: #fff;
+}
+
+/* Botón Continuar (Negro) */
+.btn-submit {
+    margin-top: 10px;
+    width: 100%;
+    padding: 14px;
+    background-color: #1a1a2e; /* Color oscuro casi negro */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-submit:hover {
+    opacity: 0.9;
+}
+
+/* Textos legales (letra pequeña) */
+.legal-text {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 24px;
+    line-height: 1.5;
+}
+
+.legal-text a {
+    color: #111827;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+/* Link de Iniciar sesión */
+.login-link {
+    margin-top: 40px;
+    font-size: 0.95rem;
+    color: #6b7280;
+}
+
+.link-action {
+    color: #111827; /* Negro */
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-left: 5px;
+}
+
+.link-action:hover {
+    color: #000;
+}

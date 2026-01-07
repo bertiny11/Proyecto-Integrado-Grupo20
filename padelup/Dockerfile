@@ -1,0 +1,17 @@
+# frontend/Dockerfile
+FROM node:22-alpine
+
+RUN apk update && apk upgrade
+
+# Crear carpeta de trabajo
+WORKDIR /app
+
+# Instalar dependencias
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copiar el resto del código
+COPY . .
+
+EXPOSE 5173
+CMD ["npm", "run", "dev"]
