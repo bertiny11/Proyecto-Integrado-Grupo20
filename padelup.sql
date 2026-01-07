@@ -106,14 +106,14 @@ CREATE TABLE `Valoraciones` (
 
 -- Usuarios
 INSERT INTO `Usuarios` (`uid`,`udni`,`contrasena`,`nombre`,`apellidos`,`cp`,`monedero`,`nivel_de_juego`,`valoracion`) VALUES
-(1, 'u11111111', '$2b$12$JXS8NZqlNojfQiY4XhWanuo/0dYenS2s8b5nR8IFkP2b6WSF5zTNK', 'Altagracia', 'García', '11500', 15.00, 'A', 5.0),
-(2, 'u22222222', '$2b$12$JXS8NZqlNojfQiY4XhWanuo/0dYenS2s8b5nR8IFkP2b6WSF5zTNK', 'Apolinario', 'Martín', '11408', 999.99, 'B', 3.8),
-(3, 'u33333333', 'contrasena_hash', 'Arnulfo', 'López', '11009', 5.50,  'C', 0.0),
-(4, 'u44444444', 'contrasena_hash', 'Arsenio', 'Sánchez', '11411', 100.00,'D', 4.9),
-(5, 'u55555555', 'contrasena_hash', 'Bonifacio', 'Ruiz', '11009', 50.00,   'F', 1.5),
-(6, 'u66666666', 'contrasena_hash', 'Burgundófora', 'Fernández', '11009', 10.00, 'A', 3.7),
-(7, 'u77777777', 'contrasena_hash', 'Cipriniano', 'Torres', '11500', 15.00, 'B', 4.2),
-(8, 'u88888888', 'contrasena_hash', 'Expiración', 'Molina', '11009', 7.50,  'C', 2.5);
+(1, 'u11111111', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Altagracia', 'García', '11500', 15.00, 'A', 5.0), -- Hashkey "a": 123456
+(2, 'u22222222', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Apolinario', 'Martín', '11408', 999.99, 'B', 3.8),
+(3, 'u33333333', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Arnulfo', 'López', '11009', 5.50,  'C', 0.0),
+(4, 'u44444444', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Arsenio', 'Sánchez', '11411', 100.00,'D', 4.9),
+(5, 'u55555555', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Bonifacio', 'Ruiz', '11009', 50.00,   'F', 1.5),
+(6, 'u66666666', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Burgundófora', 'Fernández', '11009', 10.00, 'A', 3.7),
+(7, 'u77777777', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Cipriniano', 'Torres', '11500', 15.00, 'B', 4.2),
+(8, 'u88888888', '$2b$12$1n7naUXC38l2Y2r4aw0jleCYbB..WM2g4ojBFjh7QE4x8HpQdTziG', 'Expiración', 'Molina', '11009', 7.50,  'C', 2.5);
 
 -- Sanciones
 INSERT INTO `Sanciones` (`usuario`,`fecha_fin`) VALUES
