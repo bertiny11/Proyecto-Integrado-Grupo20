@@ -108,57 +108,11 @@ def calcularValoracion(udni):
         sql_update = "UPDATE Usuarios SET valoracion = 0.0 WHERE udni = %s"
         return enviarCommit(sql_update, (udni,))
 
-# #? EJEMPLOS ********
-# def obtenerDatosUsuario(udni):
-#     '''Obtiene los datos de un usuario salvo su uid'''
-#     sql = "SELECT * FROM Usuarios WHERE udni = %s"
-#     filas = enviarSelect(sql, udni)
-
-#     if not filas:
-#         return {"error": "Usuario no encontrado"}, 404
-#     #eliminamos el uid de la respuesta por seguridad
-#     for fila in filas:
-#         fila.pop("uid", None)
-#     return filas
-
-# def obtenerDatosEmpresa(nombre):
-#     '''Obtiene los datos de una empresa salvo su eid'''
-#     sql = "SELECT * FROM Empresas WHERE nombre = %s"
-#     filas = enviarSelect(sql, nombre)
-
-#     if not filas: # comprobamos que haya datos, si no 404
-#         return {"error": "Empresa no encontrada"}, 404
-
-#     normalizarHoras(filas)
-#     # eliminamos el eid de la respuesta por seguridad
-#     for fila in filas:
-#         fila.pop("eid", None)
-#     return filas
-# #? EJEMPLOS ********
 
 ###* Endpoints *###
 @app.route('/health', methods=['GET'])
 def health_check():
     return {"status": "healthy"}, 200
-
-# #! Para debug ******
-# @app.route('/consulta', methods=['POST'])
-# def end_consulta():
-#     datos = flask.request.get_json()
-#     sql = datos.get("sql")
-#     param = datos.get("param")
-#     resultado = enviarSelect(sql, param)
-
-#     normalizarHoras(resultado)
-
-#     return flask.jsonify(resultado)
-# #! ****************
-
-# #? EJEMPLOS ********
-# @app.route('/usuario/<string:uid>', methods=['GET'])
-# def end_obtenerUsuario(uid):
-#     usuario = obtenerDatosUsuario(uid)
-#     return flask.jsonify(usuario)
 
 @app.route('/login', methods=['POST'])
 def end_login():
@@ -169,7 +123,7 @@ def end_login():
     if not all([udni, contrasena]):
         return {"error": "Faltan datos"}, 400
 
-    filas = enviarSelect("SELECT udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion, cp FROM Usuarios WHERE udni = %s", udni)
+    filas = enviarSelect("SELECT udni, nombre, apellidos, contrasena, monedero, nivel_de_juego, valoracion FROM Usuarios WHERE udni = %s", udni)
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
@@ -198,17 +152,9 @@ def end_login():
             "apellidos": usuario.get("apellidos"), # deberia funcionar solo con udni
             "monedero": usuario.get("monedero"),
             "nivel_de_juego": usuario.get("nivel_de_juego"),
-            "valoracion": usuario.get("valoracion"),
-            "cp": usuario.get("cp")
+            "valoracion": usuario.get("valoracion")
         }
     }, 200
-
-@app.route('/inicio', methods=['GET'])
-def end_inicio():
-    datos = flask.request.get_json()    # obtener el monedero del usuario
-    sql = "SELECT monedero FROM Usuarios WHERE udni = %s"
-    filas = enviarSelect(sql, datos.get("udni"))
-    return flask.jsonify(filas)
 
 @app.route('/register', methods=['POST'])
 def end_registro():
@@ -268,37 +214,6 @@ def end_ver_reservas():
     normalizarHoras(filas)
     return flask.jsonify(filas)
 
-@app.route('/modificarreserva', methods=['POST'])
-def end_modificar_reserva():
-    datos = flask.request.get_json()
-
-    sql = """SELECT pr.es_creador
-            FROM Reserva r JOIN ParticipantesReserva pr ON 
-            r.rid = pr.reserva JOIN Usuarios u ON pr.usuario = u.uid 
-            WHERE r.rid = %s AND pr.es_creador = 1 AND u.udni = %s;"""
-    filas = enviarSelect(sql, [datos.get("rid"), datos.get("udni")])
-
-    if not filas:
-        return {"error": "Solo el creador de la reserva puede modificarla."}, 401
-
-    sql = """UPDATE Reserva r
-            JOIN ParticipantesReserva pr ON r.rid = pr.reserva
-            JOIN Usuarios u ON pr.usuario = u.uid
-            SET r.hora_inicio = %s,
-                r.duracion = %s,
-                r.nivel_de_juego = %s,
-                r.tipo = %s,
-                r.huecos_libres = %s,
-                r.estado = %s
-            WHERE u.udni = %s AND r.rid = %s AND pr.es_creador = 1;"""
-
-    param = (datos.get("hora_inicio"), datos.get("duracion"), datos.get("nivel_de_juego"),
-            datos.get("tipo"), datos.get("huecos_libres"), datos.get("estado"),
-            datos.get("udni"), datos.get("rid"))
-    
-    resultado = enviarCommit(sql, param)
-    return flask.jsonify(resultado)
-
 @app.route('/actualizarmonedero', methods=['POST'])
 def end_actualizar_monedero():
     datos = flask.request.get_json()
@@ -334,52 +249,11 @@ def end_ajustes():
 
     calcularValoracion(datos.get("udni"))
 
-    sql = "SELECT nombre, apellidos, cp, monedero, nivel_de_juego, valoracion FROM Usuarios WHERE udni = %s"
+    sql = "SELECT nombre, apellidos, monedero, nivel_de_juego, valoracion FROM Usuarios WHERE udni = %s"
     filas = enviarSelect(sql, datos.get("udni"))
 
     if not filas:
         return {"error": "Usuario no encontrado"}, 404
-
-    return flask.jsonify(filas)
-
-@app.route('/actualizarusuario', methods=['POST'])
-def end_actualizar_usuario():
-    datos = flask.request.get_json()
-
-    sql = "UPDATE Usuarios SET nombre = %s, apellidos = %s, cp = %s, nivel_de_juego = %s WHERE udni = %s"
-    param = (datos.get("nombre"), datos.get("apellidos"), datos.get("cp"), datos.get("nivel_de_juego"), datos.get("udni"))
-    
-    resultado = enviarCommit(sql, param)
-    return flask.jsonify(resultado)
-
-@app.route('/empresascercanas', methods=['GET'])
-def end_empresas_cercanas():
-    datos = flask.request.get_json()
-
-    sql = "SELECT cp FROM usuarios WHERE udni = %s;"
-    try:
-        usercp = int(enviarSelect(sql, datos.get("udni"))[0]['cp']) # obtenemos el cp del usuario
-    except Exception:
-        usercp = 0 # si no tiene cp, ponemos 0 para default
-
-    sql = "SELECT nombre, direccion FROM empresas;" # obtenemos las direcciones de las empresas
-    filas = enviarSelect(sql)
-
-    for fila in filas:  # por cada fila, buscamos el cp
-        direccion = fila['direccion']
-        empresa_cp = None
-        for parte in direccion.split(): # dividimos la direccion en partes
-            if parte[:-1].isdigit() and len(parte[:-1]) == 5: # comprobamos si es cp
-                empresa_cp = int(parte[:-1])
-                break
-        
-        if empresa_cp is not None:
-            fila['distancia'] = abs(usercp - empresa_cp) # calculamos distancia
-    
-    filas.sort(key=lambda x: x['distancia']) # ordenamos por distancia
-
-    for fila in filas: # eliminamos distancia para la respuesta
-        fila.pop('distancia', None)
 
     return flask.jsonify(filas)
 
@@ -672,7 +546,6 @@ def end_ver_peticiones():
     if not filas:
         return flask.jsonify([])
     
-    #normalizarHoras(filas)
     return flask.jsonify(filas)
 
 # Hechas por el equipo de front
